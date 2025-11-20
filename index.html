@@ -460,7 +460,9 @@ useEffect(() => {
             photosListener = photosRef.on('value', (snapshot) => {
                 if (!snapshot.exists()) return;
                 const photosObject = snapshot.val();
-                const photosArray = objectToArray(photosObject);
+                let photosArray = objectToArray(photosObject);
+                // Sắp xếp ảnh theo tên, xử lý số trong tên file một cách tự nhiên
+                photosArray.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
                 setPhotos(photosArray);
                 setLastSaveTime(new Date());
             }, (error) => {
@@ -597,7 +599,7 @@ useEffect(() => {
             const handleFileUpload = (e) => {
                 const files = e.target.files;
                 if (files) {
-                    const newPhotos = Array.from(files).map((file) => ({
+                    let newPhotos = Array.from(files).map((file) => ({
                         id: Math.random().toString(36).substr(2, 9),
                         url: URL.createObjectURL(file),
                         originalUrl: URL.createObjectURL(file), 
@@ -607,6 +609,8 @@ useEffect(() => {
                         isFromDrive: false,
                         originalFile: file 
                     }));
+                    // Sắp xếp ảnh mới theo tên trước khi tải lên
+                    newPhotos.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
                     
                     const photosObject = arrayToObject(newPhotos);
                     db.ref(`albums/${albumKey}/current_status/photos`).set(photosObject)
@@ -700,7 +704,7 @@ useEffect(() => {
                     }
 
                     if (allPhotosFromAllFolders.length > 0) {
-                        const newPhotos = allPhotosFromAllFolders.map(f => {
+                        let newPhotos = allPhotosFromAllFolders.map(f => {
                             const existing = existingMap.get(f.id);
                             return {
                                 id: f.id,
@@ -714,6 +718,9 @@ useEffect(() => {
                                 isFromDrive: true
                             };
                         });
+
+                        // Sắp xếp danh sách ảnh tổng hợp trước khi gửi lên Firebase
+                        newPhotos.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
                         
                         await syncDataToFirebase(newPhotos, validFolders, driveApiKey);
 
