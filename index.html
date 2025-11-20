@@ -231,7 +231,8 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 {photo.isSelected && (
                     <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10">CHỌN</div>
                 )}
-            </div>);
+            </div>
+            );
         };
 
         const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate }) => {
@@ -241,27 +242,22 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             const [position, setPosition] = useState({ x: 0, y: 0 });
             const [isDragging, setIsDragging] = useState(false);
             const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-            
-            const [imgSrc, setImgSrc] = useState(photo.lightboxUrl || photo.url); 
-            const [hasAttemptedFallback, setHasAttemptedFallback] = useState(false);
 
+            // State để quản lý việc tải và hiển thị ảnh chất lượng cao
+            const [isLoadingHighRes, setIsLoadingHighRes] = useState(false);
+            const [isHighResLoaded, setIsHighResLoaded] = useState(false);
+            
             const currentPhoto = allPhotos[currentIndex] || photo;
             const prevPhoto = currentIndex > 0 ? allPhotos[currentIndex - 1] : null;
             const nextPhoto = currentIndex < allPhotos.length - 1 ? allPhotos[currentIndex + 1] : null;
 
             useEffect(() => {
-                setImgSrc(photo.lightboxUrl || photo.url);
-                setHasAttemptedFallback(false);
+                // Reset lại URL và trạng thái tải khi chuyển ảnh
+                setIsLoadingHighRes(false);
+                setIsHighResLoaded(false);
                 setScale(1);
                 setPosition({ x: 0, y: 0 });
             }, [photo.id, photo.lightboxUrl, photo.url]);
-            
-            const handleImageError = () => {
-                if (!hasAttemptedFallback && photo.lightboxUrl) {
-                    setImgSrc(photo.url); 
-                    setHasAttemptedFallback(true);
-                }
-            };
             
             const goToPrev = useCallback(() => {
                 if (prevPhoto) { onNavigate(prevPhoto); }
@@ -296,6 +292,12 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 setScale(1);
                 setPosition({ x: 0, y: 0 });
             };
+
+            const handleLoadHighRes = (e) => {
+                e.stopPropagation();
+                // Bắt đầu quá trình tải
+                setIsLoadingHighRes(true);
+            };
             
             useEffect(() => {
                 const handleKeyPress = (e) => {
@@ -325,6 +327,20 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                         <Icon name="heart" size={24} fill={currentPhoto.isSelected ? "currentColor" : "none"} />
                         <span className="text-sm font-semibold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
                     </button>
+
+                    {/* Nút xem ảnh gốc */}
+                    {!isHighResLoaded && (
+                        <button 
+                            onClick={handleLoadHighRes}
+                            disabled={isLoadingHighRes}
+                            className="absolute bottom-6 md:bottom-8 right-4 text-white/60 hover:text-white px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm text-sm flex items-center gap-2 disabled:opacity-50"
+                        >
+                            {isLoadingHighRes 
+                                ? <><Icon name="loader" size={16} /> Đang tải...</>
+                                : <><Icon name="eye" size={16} /> Ảnh gốc</>
+                            }
+                        </button>
+                    )}
 
                     {scale > 1 && (
                         <button onClick={(e) => { e.stopPropagation(); resetZoom(); }} className="absolute top-6 left-1/2 -translate-x-1/2 text-white/60 hover:text-white px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm text-sm">
@@ -360,17 +376,31 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                                 onMouseLeave={handleMouseUp}
                                 style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
                             >
+                                {/* Ảnh chất lượng thấp (luôn hiển thị) */}
                                 <img 
-                                    src={imgSrc}
-                                    alt={currentPhoto.name} 
-                                    onError={handleImageError}
-                                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-transform duration-200"
+                                    src={photo.lightboxUrl || photo.url}
+                                    alt={currentPhoto.name}
+                                    className={`absolute inset-0 w-full h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300 ${isHighResLoaded ? 'opacity-0' : 'opacity-100'}`}
                                     style={{ 
                                         transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
                                         transformOrigin: 'center'
                                     }}
                                     draggable={false}
                                 />
+                                {/* Ảnh chất lượng cao (tải nền và hiển thị khi sẵn sàng) */}
+                                {(isLoadingHighRes || isHighResLoaded) && (
+                                    <img 
+                                        src={photo.originalUrl}
+                                        alt={currentPhoto.name}
+                                        onLoad={() => { setIsLoadingHighRes(false); setIsHighResLoaded(true); }}
+                                        className={`absolute inset-0 w-full h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300 ${isHighResLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                        style={{ 
+                                            transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+                                            transformOrigin: 'center'
+                                        }}
+                                        draggable={false}
+                                    />
+                                )}
                                 {currentPhoto.isSelected && (
                                     <div className="absolute top-4 right-4 bg-pink-500 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
                                         <Icon name="heart" size={16} fill="currentColor" />
@@ -622,21 +652,49 @@ useEffect(() => {
                     .catch(error => showToast(`Lỗi đồng bộ: ${error.message}`, 'error'));
             };
             
-            const handleFileUpload = (e) => {
+            const handleFileUpload = async (e) => {
                 const files = e.target.files;
                 if (files) {
-                    let newPhotos = Array.from(files).map((file) => ({
-                        id: Math.random().toString(36).substr(2, 9),
-                        url: URL.createObjectURL(file),
-                        originalUrl: URL.createObjectURL(file), 
-                        name: file.name,
-                        isSelected: false,
-                        comments: '',
-                        isFromDrive: false,
-                        originalFile: file 
-                    }));
-                    // Sắp xếp ảnh mới theo tên trước khi tải lên
-                    newPhotos.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+                    showToast("Đang xử lý ảnh thumbnail...", "warning");
+
+                    const resizeImage = (file, maxSize = 500) => new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                let { width, height } = img;
+                                if (width > height) {
+                                    if (width > maxSize) { height *= maxSize / width; width = maxSize; }
+                                } else {
+                                    if (height > maxSize) { width *= maxSize / height; height = maxSize; }
+                                }
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0, width, height);
+                                canvas.toBlob(resolve, 'image/jpeg', 0.8);
+                            };
+                            img.src = event.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    });
+
+                    const photoPromises = Array.from(files).map(async (file) => {
+                        const thumbnailBlob = await resizeImage(file);
+                        return {
+                            id: Math.random().toString(36).substr(2, 9),
+                            url: URL.createObjectURL(thumbnailBlob), // URL thumbnail đã giảm dung lượng
+                            originalUrl: URL.createObjectURL(file), // URL ảnh gốc
+                            name: file.name,
+                            isSelected: false,
+                            comments: '',
+                            isFromDrive: false,
+                            originalFile: file 
+                        };
+                    });
+
+                    const newPhotos = await Promise.all(photoPromises);
                     
                     const photosObject = arrayToObject(newPhotos);
                     db.ref(`albums/${albumKey}/current_status/photos`).set(photosObject)
