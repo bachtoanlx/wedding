@@ -88,7 +88,8 @@
                 eye: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
                 messageOn: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><polyline points="9 10 12 13 16 9"></polyline></svg>,
                 messageOff: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><line x1="9" y1="10" x2="15" y2="10"></line></svg>,
-                shield: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                shield: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>,
+                menu: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             };
             return icons[name] || null;
         };
@@ -164,23 +165,27 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 };
         // === PHOTOCARD & LIGHTBOX COMPONENTS ===
         const PhotoCard = ({ photo, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments }) => (
-            <div className={`relative group rounded-lg overflow-hidden bg-gray-900 border transition-all duration-300 ${photo.isSelected ? 'border-pink-500 ring-1 ring-pink-500' : 'border-gray-800 hover:border-gray-600'}`}>
-                <div className="aspect-[4/5] cursor-pointer overflow-hidden relative" onClick={() => onOpenView(photo)}>
-                    <img src={photo.url} alt={photo.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className={`relative group md:rounded-lg overflow-hidden bg-gray-900 md:border transition-all duration-300 ${photo.isSelected ? 'border-pink-500 md:ring-1 md:ring-pink-500' : 'border-gray-800 md:hover:border-gray-600'}`}>
+                <div className="aspect-square md:aspect-[4/5] cursor-pointer overflow-hidden relative" onClick={() => onOpenView(photo)}>
+                    <img src={photo.url} alt={photo.name} className="w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-105"/>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
 
-                <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-2 group-hover:translate-y-0 transition-transform duration-300 bg-gray-900/95 backdrop-blur-sm">
+                {/* Trên mobile, các nút sẽ luôn hiển thị. Trên desktop, chúng sẽ hiện khi hover. */}
+                <div className="absolute md:translate-y-2 md:group-hover:translate-y-0 bottom-0 left-0 right-0 p-3 transition-transform duration-300 bg-gray-900/95 backdrop-blur-sm">
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-xs text-gray-400 truncate max-w-[120px]">{photo.name}</span>
-                        <button onClick={(e) => { e.stopPropagation(); onToggleSelect(photo.id); }} className={`p-2 rounded-full transition-colors duration-200 ${photo.isSelected ? 'bg-pink-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                        <button onClick={(e) => { e.stopPropagation(); onToggleSelect(photo.id); }} className={`p-2 rounded-full transition-colors duration-200 ${photo.isSelected ? 'bg-pink-500 text-white' : 'bg-gray-800 text-gray-400 md:hover:bg-gray-700'}`}>
                             {viewMode === 'CLIENT' ? <Icon name="heart" size={18} fill={photo.isSelected ? "currentColor" : "none"} /> : <Icon name="checkCircle" size={18} />}
                         </button>
                     </div>
 
                     {(photo.isSelected || photo.comments) && (
                         <div className="relative">
-                            <div className="flex items-center gap-2 text-gray-400 mb-1">
+                            {/* Trên mobile, tiêu đề "Yêu cầu chỉnh sửa" sẽ được ẩn đi để gọn hơn nếu chưa có comment */}
+                            <div className={`flex items-center gap-2 text-gray-400 mb-1 ${
+                                viewMode === 'CLIENT' && !photo.comments && 'hidden'
+                            }`}>
                                 <Icon name="message" size={12} />
                                 <span className="text-[10px] uppercase font-semibold tracking-wider">Yêu cầu chỉnh sửa</span>
                             </div>
@@ -198,7 +203,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 </div>
                 
                 {photo.isSelected && (
-                    <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10">ĐÃ CHỌN</div>
+                    <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10">CHỌN</div>
                 )}
             </div>
         );
@@ -278,18 +283,18 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             
             return (
                 <div className="fixed inset-0 z-50 bg-black flex items-center justify-center overflow-hidden" onClick={onClose}>
-                    <button onClick={onClose} className="absolute top-6 right-6 text-white/60 hover:text-white p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm">
+                    <button onClick={onClose} className="absolute top-4 right-4 md:top-6 md:right-6 text-white/60 hover:text-white p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm">
                         <Icon name="x" size={28} />
                     </button>
 
-                    <div className="absolute top-6 left-6 text-white/80 z-50 backdrop-blur-sm bg-white/5 px-4 py-2 rounded-lg">
+                    <div className="absolute top-4 left-4 md:top-6 md:left-6 text-white/80 z-50 backdrop-blur-sm bg-white/5 px-4 py-2 rounded-lg max-w-[calc(100%-6rem)]">
                         <p className="text-sm font-medium mb-1">{currentPhoto.name}</p>
                         <p className="text-xs text-gray-400">{currentIndex + 1} / {allPhotos.length} {scale > 1 && `• Zoom: ${Math.round(scale * 100)}%`}</p>
                     </div>
 
                     <button 
                         onClick={(e) => { e.stopPropagation(); onToggleSelect(currentPhoto.id); }} 
-                        className={`absolute bottom-8 left-1/2 -translate-x-1/2 p-4 rounded-full transition-all z-50 backdrop-blur-sm flex items-center gap-2 ${currentPhoto.isSelected ? 'bg-pink-500 text-white' : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'}`}
+                        className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 backdrop-blur-sm flex items-center gap-2 ${currentPhoto.isSelected ? 'bg-pink-500 text-white' : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'}`}
                     >
                         <Icon name="heart" size={24} fill={currentPhoto.isSelected ? "currentColor" : "none"} />
                         <span className="text-sm font-semibold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
@@ -302,12 +307,12 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     )}
 
                     {prevPhoto && (
-                        <button onClick={(e) => { e.stopPropagation(); goToPrev(); }} className="absolute left-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-4 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm">
+                        <button onClick={(e) => { e.stopPropagation(); goToPrev(); }} className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-2 md:p-4 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm">
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
                         </button>
                     )}
                     {nextPhoto && (
-                        <button onClick={(e) => { e.stopPropagation(); goToNext(); }} className="absolute right-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-4 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm">
+                        <button onClick={(e) => { e.stopPropagation(); goToNext(); }} className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-2 md:p-4 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm">
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </button>
                     )}
@@ -319,9 +324,9 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                             </div>
                         )}
 
-                        <div className="relative z-10 w-[60vw] h-[92vh] flex items-center justify-center">
+                        <div className="relative z-10 w-full md:w-[60vw] h-full md:h-[92vh] flex items-center justify-center">
                             <div 
-                                className="relative w-full h-full flex items-center justify-center overflow-hidden"
+                                className="relative w-full h-full flex items-center justify-center"
                                 onWheel={handleWheel}
                                 onMouseDown={handleMouseDown}
                                 onMouseMove={handleMouseMove}
@@ -349,8 +354,8 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                             </div>
                         </div>
 
-                        {nextPhoto && scale === 1 && (
-                            <div className="absolute right-[10%] top-1/2 -translate-y-1/2 w-[18vw] h-[58vh] opacity-30 blur-[2px] scale-95 transition-all duration-500 cursor-pointer hover:opacity-50 hover:scale-100 hover:blur-[1px]" onClick={(e) => { e.stopPropagation(); goToNext(); }}>
+                        {nextPhoto && scale === 1 && ( // Ẩn ảnh preview trên mobile
+                            <div className="hidden md:block absolute right-[10%] top-1/2 -translate-y-1/2 w-[18vw] h-[58vh] opacity-30 blur-[2px] scale-95 transition-all duration-500 cursor-pointer hover:opacity-50 hover:scale-100 hover:blur-[1px]" onClick={(e) => { e.stopPropagation(); goToNext(); }}>
                                 <img src={nextPhoto.url} alt={nextPhoto.name} className="w-full h-full object-cover rounded-lg shadow-2xl" />
                             </div>
                         )}
@@ -359,16 +364,47 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             );
         };
 
-        // === APP COMPONENT (Đã refactor sang Firebase) ===
-        const App = () => {
+        // === HOME PAGE COMPONENT ===
+        // Trang chủ để người dùng chọn tạo hoặc truy cập album
+        const AlbumEntryPage = () => {
+            const [albumName, setAlbumName] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!albumName.trim()) return;
+                const name = albumName.trim();
+                const key = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                window.location.search = `?album=${key}&name=${encodeURIComponent(name)}`;
+            };
+
+            return (
+                <div className="flex items-center justify-center h-screen">
+                    <div className="bg-gray-900 border border-gray-700 p-8 rounded-2xl max-w-md w-full shadow-2xl">
+                        <div className="flex justify-center mb-6 text-pink-500">
+                            <Icon name="camera" size={40} />
+                        </div>
+                        <h1 className="text-2xl font-bold text-center mb-2">LensFlow Proofing</h1>
+                        <p className="text-sm text-gray-400 text-center mb-8">Client Proofing & Selection</p>
+
+                        <form onSubmit={handleSubmit}>
+                            <label className="text-sm font-medium text-gray-300 mb-2 block">Tên Album</label>
+                            <input type="text" value={albumName} onChange={e => setAlbumName(e.target.value)} autoFocus placeholder="Nhập tên để tạo hoặc truy cập..." className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4" />
+                            <button type="submit" disabled={!albumName.trim()} className="w-full py-3 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-bold disabled:opacity-50">Tiếp tục</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        // === APP COMPONENT (Quản lý một album cụ thể) ===
+        const App = ({ albumKey, initialAlbumName }) => {
             const [photos, setPhotos] = useState([]);
             const [viewMode, setViewMode] = useState('CLIENT');
             const [filterMode, setFilterMode] = useState('ALL');
             const [selectedPhoto, setSelectedPhoto] = useState(null);
             
             // Cấu hình Album và Admin
-            const [albumName, setAlbumName] = useState(() => getStorage('lensflow_albumName', "Dream Wedding 2025"));
-            const [albumKey, setAlbumKey] = useState(() => albumName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase());
+            const [albumName, setAlbumName] = useState(initialAlbumName || "Chưa đặt tên");
 
             const [allowComments, setAllowComments] = useState(true);
             const [adminPassword, setAdminPassword] = useState(""); 
@@ -394,14 +430,8 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             const [isPasscodeVerified, setIsPasscodeVerified] = useState(false); 
             // Thêm vào App component
             const [isLoading, setIsLoading] = useState(true); // Trạng thái mới: Mặc định là đang tải dữ liệu Firebase config
+            const [showAdminPanel, setShowAdminPanel] = useState(false); // State cho Admin Panel trên mobile
             
-            // --- FIREBASE: CẬP NHẬT KEY VÀ CONFIG ---
-            useEffect(() => {
-                const newAlbumKey = albumName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-                setAlbumKey(newAlbumKey);
-                localStorage.setItem('lensflow_albumName', albumName); 
-                document.title = albumName;
-            }, [albumName]);
 // --- FIREBASE: LISTENER CHÍNH (Đã sửa lỗi không hiển thị Passcode) ---
 useEffect(() => {
     if (!albumKey) return;
@@ -419,6 +449,7 @@ useEffect(() => {
         setIsPasscodeVerified(true);
 
         // Cập nhật cấu hình từ Firebase
+        setAlbumName(configData.albumName || 'Chưa đặt tên');
         setDriveFolders(configData.driveFolders || []);
         setDriveApiKey(configData.driveApiKey || '');
         setAdminPassword(configData.adminPassword || '');
@@ -492,6 +523,10 @@ useEffect(() => {
     }; // Thêm isPasscodeVerified vào dependency array để kích hoạt listener
 }, [albumKey, isPasscodeVerified]);
 
+            // Cập nhật document title khi albumName thay đổi
+            useEffect(() => {
+                document.title = `${albumName} - LensFlow`;
+            }, [albumName]);
 
             // Cập nhật cấu hình lên Firebase khi Admin thay đổi (Chỉ Admin Cấu hình)
 			const saveConfigToFirebase = useCallback(() => {
@@ -895,7 +930,7 @@ const handleInitializeAlbum = (adminPasswordInput, newPasscodeInput) => {
         adminPassword: adminPasswordInput,
         allowComments: true,
         passcode: newPasscodeInput, // <-- PASSCODE ĐƯỢC THIẾT LẬP Ở ĐÂY
-        albumName 
+        albumName // Sử dụng albumName từ state, được truyền từ URL
     };
     
     // 3. Chuẩn bị Multi-path update
@@ -954,6 +989,7 @@ const handlePasscodeAccess = async (inputPasscode) => {
             sessionStorage.setItem(`lensflow_passcode_${albumKey}`, inputPasscode);
 
             // Cập nhật state để kích hoạt useEffect tải ảnh
+            setAlbumName(configData.albumName || 'Chưa đặt tên');
             setDriveFolders(configData.driveFolders || []);
             setDriveApiKey(configData.driveApiKey || '');
             setAdminPassword(configData.adminPassword || '');
@@ -1099,11 +1135,23 @@ const handlePasscodeAccess = async (inputPasscode) => {
                     
                     {isPasscodeVerified && (
                     <>
-                        <div className={`${viewMode === 'PHOTOGRAPHER' ? 'w-80' : 'w-0 -translate-x-full'} transition-all duration-300 bg-gray-900 border-r border-gray-800 overflow-hidden`}>
+                        {/* Lớp phủ mờ cho Admin Panel trên mobile */}
+                        {showAdminPanel && viewMode === 'PHOTOGRAPHER' && (
+                            <div 
+                                className="fixed inset-0 bg-black/60 z-30 md:hidden"
+                                onClick={() => setShowAdminPanel(false)}
+                            ></div>
+                        )}
+
+                        {/* Admin Panel */}
+                        <div className={`fixed md:relative top-0 left-0 h-full z-40 md:z-auto transition-transform duration-300 ease-in-out bg-gray-900 border-r border-gray-800 overflow-hidden ${
+                            viewMode === 'PHOTOGRAPHER' ? 'w-80' : 'w-0'
+                        } ${showAdminPanel ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
                             <div className="p-6 overflow-y-auto h-full">
-                                <div className="flex items-center gap-2 text-pink-500 mb-8">
+                                <div className="flex items-center justify-between gap-2 text-pink-500 mb-8">
                                     <Icon name="camera" size={28} />
                                     <span className="font-bold text-xl">Admin Panel</span>
+                                    <button onClick={() => setShowAdminPanel(false)} className="md:hidden p-2 text-gray-400 hover:text-white"><Icon name="x" size={20} /></button>
                                 </div>
                                 
                                 <div className="mb-6">
@@ -1229,17 +1277,23 @@ const handlePasscodeAccess = async (inputPasscode) => {
 
                         <div className="flex-1 flex flex-col">
                             <header className="h-16 border-b border-gray-800 flex items-center justify-between px-6 bg-gray-950/80 backdrop-blur-md">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center">
+                                <div className="flex items-center gap-2 md:gap-3">
+                                    {/* Nút Hamburger cho Admin Panel trên mobile */}
+                                    {viewMode === 'PHOTOGRAPHER' && (
+                                        <button onClick={() => setShowAdminPanel(true)} className="md:hidden p-2 text-gray-400 hover:text-white">
+                                            <Icon name="menu" size={24} />
+                                        </button>
+                                    )}
+                                    <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex-shrink-0 flex items-center justify-center">
                                         <Icon name="camera" size={18} stroke="white" />
                                     </div>
-                                    <h1 className="font-bold text-lg">{albumName}</h1>
+                                    <h1 className="font-bold text-lg truncate max-w-[150px] md:max-w-none">{albumName}</h1>
                                     
                                     {/* Folder selector cho KHÁCH */}
                                     {viewMode === 'CLIENT' && driveFolders.length > 0 && (
                                         <select value={currentFolderId} onChange={(e) => {
                                             setCurrentFolderId(e.target.value);
-                                        }} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:border-pink-500 outline-none">
+                                        }} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:border-pink-500 outline-none max-w-[120px] md:max-w-xs">
                                             <option value="">Chọn thư mục...</option>
                                             {driveFolders.map((folder, idx) => (
                                                 <option key={idx} value={folder.id}>{folder.name}</option>
@@ -1248,7 +1302,7 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                     )}
                                     
                                     {lastSaveTime && (
-                                        <span className="text-[10px] text-green-400 flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full" title="Tự động đồng bộ lên Firebase">
+                                        <span className="hidden md:flex text-[10px] text-green-400 items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full" title="Tự động đồng bộ lên Firebase">
                                             <Icon name="checkCircle" size={10} /> Sync: {lastSaveTime.toLocaleTimeString('vi-VN')}
                                         </span>
                                     )}
@@ -1273,16 +1327,23 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                 </div>
                             </header>
 
-                            <main className="flex-1 overflow-y-auto p-4 md:p-8">
+                            <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
                                 {!photos.length ? (
                                     <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-50">
                                         <Icon name="grid" size={64} strokeWidth={1} className="mb-4" />
                                         <p className="text-lg font-light">Chưa có ảnh nào</p>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 pb-20">
-                                        {filteredPhotos.map(photo => (
-                                            <PhotoCard key={photo.id} photo={photo} viewMode={viewMode} onToggleSelect={toggleSelect} onUpdateComment={updateComment} onOpenView={setSelectedPhoto} allowComments={allowComments} />
+                                    // Thay đổi layout dựa trên viewMode và kích thước màn hình
+                                    <div className={
+                                        viewMode === 'CLIENT' 
+                                        ? "flex flex-col md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 md:gap-4 lg:gap-6 pb-20" 
+                                        : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4 lg:gap-6 pb-20"
+                                    }>
+                                        {filteredPhotos.map((photo, index) => (
+                                            <div key={photo.id}>
+                                                <PhotoCard photo={photo} viewMode={viewMode} onToggleSelect={toggleSelect} onUpdateComment={updateComment} onOpenView={setSelectedPhoto} allowComments={allowComments} />
+                                            </div>
                                         ))}
                                     </div>
                                 )}
@@ -1303,7 +1364,23 @@ const handlePasscodeAccess = async (inputPasscode) => {
             );
         };
 
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        // === ROUTER COMPONENT (Top-level) ===
+        // Quyết định hiển thị HomePage hay App dựa trên URL
+        const AlbumRouter = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const albumKey = urlParams.get('album');
+            const initialAlbumName = urlParams.get('name');
+
+            if (albumKey) {
+                // Nếu có album key trong URL, hiển thị App component
+                return <App albumKey={albumKey} initialAlbumName={initialAlbumName} />;
+            } else {
+                // Nếu không, hiển thị trang chủ để tạo/truy cập
+                return <AlbumEntryPage />;
+            }
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<AlbumRouter />);
     </script>
 </body>
 </html>
