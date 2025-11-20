@@ -164,10 +164,36 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
     );
 };
         // === PHOTOCARD & LIGHTBOX COMPONENTS ===
-        const PhotoCard = ({ photo, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments }) => (
-            <div className={`relative group md:rounded-lg overflow-hidden bg-gray-900 md:border transition-all duration-300 ${photo.isSelected ? 'border-pink-500 md:ring-1 md:ring-pink-500' : 'border-gray-800 md:hover:border-gray-600'}`}>
+        const PhotoCard = ({ photo, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments }) => {
+            const cardRef = React.useRef(null);
+            const [isVisible, setIsVisible] = useState(false);
+
+            useEffect(() => {
+                const observer = new IntersectionObserver(
+                    ([entry]) => {
+                        if (entry.isIntersecting) {
+                            setIsVisible(true);
+                            observer.unobserve(cardRef.current); // Tải 1 lần rồi thôi
+                        }
+                    },
+                    { rootMargin: "200px" } // Bắt đầu tải ảnh khi còn cách màn hình 200px
+                );
+
+                if (cardRef.current) {
+                    observer.observe(cardRef.current);
+                }
+
+                return () => observer.disconnect();
+            }, []);
+
+            return (
+            <div ref={cardRef} className={`relative group md:rounded-lg overflow-hidden bg-gray-900 md:border transition-all duration-300 ${photo.isSelected ? 'border-pink-500 md:ring-1 md:ring-pink-500' : 'border-gray-800 md:hover:border-gray-600'}`}>
                 <div className="aspect-square md:aspect-[4/5] cursor-pointer overflow-hidden relative" onClick={() => onOpenView(photo)}>
-                    <img src={photo.url} alt={photo.name} className="w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-105"/>
+                    {isVisible ? (
+                        <img src={photo.url} alt={photo.name} className="w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-105"/>
+                    ) : (
+                        <div className="w-full h-full bg-gray-800 animate-pulse"></div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
 
@@ -205,8 +231,8 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 {photo.isSelected && (
                     <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10">CHỌN</div>
                 )}
-            </div>
-        );
+            </div>);
+        };
 
         const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate }) => {
             if (!photo) return null;
