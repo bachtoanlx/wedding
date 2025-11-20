@@ -188,7 +188,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 
             return (
             <div ref={cardRef} className={`relative group md:rounded-lg overflow-hidden bg-gray-900 md:border transition-all duration-300 ${photo.isSelected ? 'border-pink-500 md:ring-1 md:ring-pink-500' : 'border-gray-800 md:hover:border-gray-600'}`}>
-                <div className="aspect-square md:aspect-[4/5] cursor-pointer overflow-hidden relative" onClick={() => onOpenView(photo)}>
+                <div className="aspect-[4/5] cursor-pointer overflow-hidden relative" onClick={() => onOpenView(photo)}>
                     {isVisible ? (
                         <img src={photo.url} alt={photo.name} className="w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-105"/>
                     ) : (
