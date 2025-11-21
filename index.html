@@ -518,31 +518,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                         </div>
                     </div>
 
-                    {/* --- [NÚT CHỌN ẢNH SIÊU NHẠY] --- */}
-                    <button 
-                        // 1. Xử lý cho PC (Chuột)
-                        onClick={(e) => { 
-                            e.stopPropagation(); 
-                            onToggleSelect(currentPhoto.id); 
-                        }}
-
-                        // 2. Xử lý cho Mobile (Chạm) -> NHẠY HƠN CLICK RẤT NHIỀU
-                        onTouchEnd={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault(); // Chặn trình duyệt chờ đợi "Click", kích hoạt ngay lập tức
-                            onToggleSelect(currentPhoto.id);
-                        }}
-
-                        // 3. Chặn sự kiện vuốt lọt vào Lightbox (Fix lỗi đang vuốt mà bấm không ăn)
-                        onTouchStart={(e) => e.stopPropagation()}
-                        
-                        // 4. Tăng vùng bấm ảo (Hit box) lên to hơn mà không làm xấu giao diện
-                        // Thêm class: 'before:absolute before:-inset-4 before:content-[""]' để mở rộng vùng bấm ra xung quanh 16px
-                        className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 flex items-center gap-2 shadow-xl duration-300 before:absolute before:-inset-6 before:content-[""] ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} md:translate-y-0 md:opacity-100 md:pointer-events-auto ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
-                    >
-                        <Icon name="heart" size={24} fill={currentPhoto.isSelected ? "currentColor" : "none"} />
-                        <span className="text-sm font-bold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
-                    </button>
+                    
 
                     {prevPhoto && (
                         <button 
@@ -620,6 +596,31 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                             </div>
                         )}
                     </div>
+					{/* --- [NÚT CHỌN ẢNH SIÊU NHẠY] --- */}
+                    <button 
+                        // 1. Xử lý cho PC (Chuột)
+                        onClick={(e) => { 
+                            e.stopPropagation(); 
+                            onToggleSelect(currentPhoto.id); 
+                        }}
+
+                        // 2. Xử lý cho Mobile (Chạm) -> NHẠY HƠN CLICK RẤT NHIỀU
+                        onTouchEnd={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault(); // Chặn trình duyệt chờ đợi "Click", kích hoạt ngay lập tức
+                            onToggleSelect(currentPhoto.id);
+                        }}
+
+                        // 3. Chặn sự kiện vuốt lọt vào Lightbox (Fix lỗi đang vuốt mà bấm không ăn)
+                        onTouchStart={(e) => e.stopPropagation()}
+                        
+                        // 4. Tăng vùng bấm ảo (Hit box) lên to hơn mà không làm xấu giao diện
+                        // Thêm class: 'before:absolute before:-inset-4 before:content-[""]' để mở rộng vùng bấm ra xung quanh 16px
+                        className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 flex items-center gap-2 shadow-xl duration-300 before:absolute before:-inset-6 before:content-[""] ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} md:translate-y-0 md:opacity-100 md:pointer-events-auto ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
+                    >
+                        <Icon name="heart" size={24} fill={currentPhoto.isSelected ? "currentColor" : "none"} />
+                        <span className="text-sm font-bold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
+                    </button>
                 </div>
             );
         };
