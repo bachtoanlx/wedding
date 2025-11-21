@@ -804,6 +804,119 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, folderName: '' });
             const [isMovingFiles, setIsMovingFiles] = useState(false);
             const [moveProgress, setMoveProgress] = useState({ current: 0, total: 0, fileName: '' });
+			const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+			const cancelDownloadRef = React.useRef(false);
+			// [CẬP NHẬT] Hàm xử lý Download (Fix lỗi chặn Pop-up + Logic lọc thông minh)
+            const handleSmartDownload = async (type) => {
+                setShowDownloadMenu(false); 
+                cancelDownloadRef.current = false;
+
+                let filesToDownload = [];
+
+                // --- 1. LOGIC LỌC ẢNH ---
+                if (type === 'SELECTED') {
+                    // Lấy tất cả ảnh đã tick
+                    let selectedSource = photos.filter(p => p.isSelected);
+
+                    // Nếu đang xem 1 folder cụ thể -> Chỉ lọc ảnh thuộc folder đó
+                    if (currentFolderId) {
+                        const currentFolder = driveFolders.find(f => f.id === currentFolderId);
+                        if (currentFolder) {
+                            filesToDownload = selectedSource.filter(p => p.folderName === currentFolder.name);
+                        }
+                    } else {
+                        // Nếu đang xem Tất cả -> Lấy hết
+                        filesToDownload = selectedSource;
+                    }
+
+                    if (filesToDownload.length === 0) {
+                        const contextName = currentFolderId ? "thư mục này" : "album";
+                        showToast(`Bạn chưa chọn ảnh nào trong ${contextName}!`, "warning");
+                        return;
+                    }
+                } 
+                else if (type === 'ALL') {
+                    if (currentFolderId) {
+                        const currentFolder = driveFolders.find(f => f.id === currentFolderId);
+                        if (currentFolder) {
+                            filesToDownload = photos.filter(p => p.folderName === currentFolder.name);
+                        }
+                    } else {
+                        filesToDownload = photos;
+                    }
+                }
+
+                if (filesToDownload.length === 0) {
+                    showToast("Không có ảnh nào để tải!", "warning");
+                    return;
+                }
+
+                if (!window.confirm(`Bạn muốn tải xuống ${filesToDownload.length} ảnh?`)) return;
+
+                setIsMovingFiles(true);
+                setMoveProgress({ current: 0, total: filesToDownload.length, fileName: '' });
+
+                // --- 2. QUY TRÌNH TẢI (DÙNG BLOB ĐỂ TRÁNH BỊ CHẶN) ---
+                for (let i = 0; i < filesToDownload.length; i++) {
+                    if (cancelDownloadRef.current) {
+                        setIsMovingFiles(false);
+                        showToast(`Đã hủy! Tải được ${i}/${filesToDownload.length} ảnh.`, "info");
+                        return; 
+                    }
+
+                    const photo = filesToDownload[i];
+                    setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: photo.name });
+                    
+                    try {
+                        // Ưu tiên link gốc, fallback sang các link khác
+                        const downloadUrl = photo.originalUrl || photo.lightboxUrl || photo.url;
+                        
+                        // Bước A: Tải dữ liệu ảnh về bộ nhớ đệm (Fetch)
+                        // Cách này giúp trình duyệt hiểu đây là hành động tải file nội bộ, không phải mở tab spam
+                        const response = await fetch(downloadUrl);
+                        if (!response.ok) throw new Error("Fetch failed");
+                        
+                        const blob = await response.blob();
+                        const blobUrl = URL.createObjectURL(blob);
+
+                        // Bước B: Tạo link ảo để lưu file từ bộ nhớ đệm
+                        const link = document.createElement('a');
+                        link.href = blobUrl;
+                        link.download = photo.name; // Tên file khi lưu
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        // Dọn dẹp bộ nhớ
+                        URL.revokeObjectURL(blobUrl);
+                        
+                        // Nghỉ 1 chút để máy không bị đơ
+                        await new Promise(r => setTimeout(r, 500)); 
+
+                    } catch (err) {
+                        console.error("Lỗi tải:", photo.name, err);
+                        // Nếu Fetch lỗi (do CORS), thử Fallback mở tab mới (có thể bị chặn nhưng còn hơn không)
+                        const fallbackLink = document.createElement('a');
+                        fallbackLink.href = photo.originalUrl || photo.url;
+                        fallbackLink.download = photo.name;
+                        fallbackLink.target = "_blank";
+                        document.body.appendChild(fallbackLink);
+                        fallbackLink.click();
+                        document.body.removeChild(fallbackLink);
+                    }
+                }
+                setIsMovingFiles(false);
+                
+                if (!cancelDownloadRef.current) {
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                    if (isIOS) {
+                        showToast("✅ Đã lưu vào tệp (Files). Kiểm tra thư mục Tải về!", "success");
+                    } else {
+                        showToast("✅ Đã tải xong!", "success");
+                    }
+                }
+            };
+		
 
             const [isInitialized, setIsInitialized] = useState(false); 
             const [showPasscodeModal, setShowPasscodeModal] = useState(true); 
@@ -1552,13 +1665,16 @@ const handlePasscodeAccess = async (inputPasscode) => {
                     )}
 
                     {/* Progress Modal (Giữ nguyên) */}
+{/* Progress Modal (CÓ NÚT HỦY) */}
                     {isMovingFiles && moveProgress.total > 0 && (
                         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
                             <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-md w-full shadow-xl">
                                 <div className="flex justify-center mb-4 text-green-500">
                                     <Icon name="loader" size={48} />
                                 </div>
-                                <h2 className="text-lg font-bold text-center mb-6 text-gray-900">Đang lưu ảnh gốc...</h2>
+                                <h2 className="text-lg font-bold text-center mb-6 text-gray-900">
+                                    {viewMode === 'PHOTOGRAPHER' ? "Đang lưu ảnh gốc..." : "Đang tải xuống..."}
+                                </h2>
                                 
                                 <div className="mb-4">
                                     <div className="flex justify-between text-sm mb-2">
@@ -1570,14 +1686,22 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                     </div>
                                 </div>
                                 
-                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-6">
                                     <p className="text-xs text-gray-400 mb-1">Đang xử lý:</p>
                                     <p className="text-sm text-gray-800 truncate font-mono">{moveProgress.fileName}</p>
                                 </div>
                                 
-                                <p className="text-xs text-center text-gray-500 mt-4">
-                                    ⚡ Đang tải file chất lượng gốc từ Drive
-                                </p>
+                                {/* --- [MỚI] NÚT HỦY BỎ --- */}
+                                <button 
+                                    onClick={() => {
+                                        // Bật cờ hủy -> Vòng lặp sẽ dừng ở ảnh tiếp theo
+                                        cancelDownloadRef.current = true;
+                                    }}
+                                    className="w-full py-2.5 rounded-lg border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Icon name="x" size={18} />
+                                    Hủy bỏ
+                                </button>
                             </div>
                         </div>
                     )}
@@ -1734,9 +1858,49 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                             <Icon name="menu" size={24} />
                                         </button>
                                     )}
-                                    <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex-shrink-0 flex items-center justify-center shadow-md shadow-pink-200">
-                                        <Icon name="camera" size={18} stroke="white" />
-                                    </div>
+                                    {/* --- [MỚI] MENU DOWNLOAD --- */}
+                                <div className="relative z-50">
+                                    <button 
+                                        onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                                        className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg shadow-pink-200 transition-all active:scale-95"
+                                    >
+                                        <Icon name="camera" size={20} stroke="white" />
+                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-pink-600"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </div>
+                                    </button>
+
+                                    {showDownloadMenu && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowDownloadMenu(false)}></div>
+                                            <div className="absolute top-12 left-0 w-60 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-left">
+                                                <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tải về máy</p>
+                                                    <p className="text-xs font-bold text-pink-600 truncate">
+                                                        {currentFolderId ? (driveFolders.find(f => f.id === currentFolderId)?.name || "Thư mục này") : "Toàn bộ Album"}
+                                                    </p>
+                                                </div>
+                                                <div className="p-1">
+                                                    {/* Dùng viewStats.selected để hiện đúng số lượng theo ngữ cảnh */}
+                                                    <button onClick={() => handleSmartDownload('SELECTED')} disabled={viewStats.selected === 0} className="w-full text-left px-3 py-3 hover:bg-pink-50 rounded-lg flex items-center gap-3 transition-colors disabled:opacity-50">
+                                                        <div className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center"><Icon name="checkCircle" size={16} /></div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-gray-800">Ảnh đã chọn</p>
+                                                            <p className="text-[10px] text-gray-500">
+                                                                {viewStats.selected} tấm 
+                                                                {currentFolderId && viewStats.selected < selectedCount ? ` (Tổng: ${selectedCount})` : ''}
+                                                            </p>
+                                                        </div>
+                                                    </button>
+                                                    <button onClick={() => handleSmartDownload('ALL')} className="w-full text-left px-3 py-3 hover:bg-blue-50 rounded-lg flex items-center gap-3 transition-colors">
+                                                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center"><Icon name="download" size={16} /></div>
+                                                        <div><p className="text-sm font-bold text-gray-800">Tải danh sách này</p><p className="text-[10px] text-gray-500">{currentFolderId ? "Chỉ tải folder đang xem" : "Tải tất cả folder"}</p></div>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                                     <h1 className="font-bold text-lg truncate max-w-[150px] md:max-w-none text-gray-800">{albumName}</h1>
                                     
                                     {/* Folder selector cho KHÁCH */}
