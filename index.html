@@ -807,14 +807,14 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 			const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 			const cancelDownloadRef = React.useRef(false);
 			// [CẬP NHẬT] Hàm xử lý Download (Fix lỗi chặn Pop-up + Logic lọc thông minh)
-            // [CẬP NHẬT FIX ANDROID] Hàm xử lý Download
+            // [FINAL FIX] Hàm tải file dùng Iframe (Bypass CORS + Android)
             const handleSmartDownload = async (type) => {
                 setShowDownloadMenu(false); 
                 cancelDownloadRef.current = false;
 
                 let filesToDownload = [];
 
-                // --- 1. LOGIC LỌC ẢNH ---
+                // --- 1. LOGIC LỌC (GIỮ NGUYÊN) ---
                 if (type === 'SELECTED') {
                     let selectedSource = photos.filter(p => p.isSelected);
                     if (currentFolderId) {
@@ -848,18 +848,15 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     return;
                 }
 
-                // Thông báo khác nhau cho iOS và Android
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-                const confirmMsg = isIOS 
-                    ? `Tải ${filesToDownload.length} ảnh?\n(Ảnh sẽ lưu vào ứng dụng 'Tệp/Files', không phải Album ảnh)`
-                    : `Tải ${filesToDownload.length} ảnh về máy?`;
+                // Thông báo quan trọng
+                const confirmMsg = `Sắp tải ${filesToDownload.length} ảnh.\n\nLƯU Ý QUAN TRỌNG:\n1. Không tắt trình duyệt khi đang tải.\n2. Tốc độ sẽ chậm (2 giây/ảnh) để tránh bị Google chặn.\n3. Trên Android: Kiểm tra mục 'Tải xuống' của Chrome nếu không thấy trong Thư viện.`;
 
                 if (!window.confirm(confirmMsg)) return;
 
                 setIsMovingFiles(true);
                 setMoveProgress({ current: 0, total: filesToDownload.length, fileName: '' });
 
-                // --- 2. QUY TRÌNH TẢI ---
+                // --- 2. QUY TRÌNH TẢI IFRAME ---
                 for (let i = 0; i < filesToDownload.length; i++) {
                     if (cancelDownloadRef.current) {
                         setIsMovingFiles(false);
@@ -871,35 +868,21 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: photo.name });
                     
                     try {
-                        const downloadUrl = photo.originalUrl || photo.lightboxUrl || photo.url;
+                        // Tạo URL tải trực tiếp từ API Google (Force Download)
+                        const downloadUrl = `https://www.googleapis.com/drive/v3/files/${photo.id}?alt=media&key=${driveApiKey}`;
                         
-                        // Tải file về Blob
-                        const response = await fetch(downloadUrl);
-                        if (!response.ok) throw new Error("Fetch failed");
-                        
-                        const blobData = await response.blob();
-                        
-                        // [QUAN TRỌNG FIX ANDROID]: Ép kiểu file là ảnh JPEG
-                        const blob = new Blob([blobData], { type: 'image/jpeg' });
-                        const blobUrl = URL.createObjectURL(blob);
+                        // Tạo một thẻ Iframe ẩn
+                        const iframe = document.createElement('iframe');
+                        iframe.style.display = 'none';
+                        iframe.src = downloadUrl;
+                        document.body.appendChild(iframe);
 
-                        // [QUAN TRỌNG FIX ANDROID]: Đảm bảo tên file có đuôi .jpg
-                        let fileName = photo.name;
-                        if (!fileName.toLowerCase().endsWith('.jpg') && !fileName.toLowerCase().endsWith('.jpeg') && !fileName.toLowerCase().endsWith('.png')) {
-                            fileName += '.jpg';
-                        }
+                        // Chờ 2.5 giây để trình duyệt bắt link và lưu file
+                        // Google Drive giới hạn lượt tải, nếu quá nhanh sẽ bị lỗi 403
+                        await new Promise(r => setTimeout(r, 2500)); 
 
-                        const link = document.createElement('a');
-                        link.href = blobUrl;
-                        link.download = fileName; 
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        
-                        URL.revokeObjectURL(blobUrl);
-                        
-                        // Tăng thời gian nghỉ lên 1s để Android kịp quét file
-                        await new Promise(r => setTimeout(r, 1000)); 
+                        // Dọn dẹp iframe sau khi tải xong
+                        document.body.removeChild(iframe);
 
                     } catch (err) {
                         console.error("Lỗi tải:", photo.name, err);
@@ -908,10 +891,11 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 setIsMovingFiles(false);
                 
                 if (!cancelDownloadRef.current) {
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
                     if (isIOS) {
-                        showToast("✅ Đã xong! Hãy mở app 'Tệp' (Files) để xem.", "success");
+                        showToast("✅ Đã xong! Vào ứng dụng 'Tệp' (Files) để xem.", "success");
                     } else {
-                        showToast("✅ Đã tải xong! Kiểm tra mục 'Downloads' trong thư viện.", "success");
+                        showToast("✅ Đã xong! Kiểm tra thanh thông báo hoặc mục Tải xuống.", "success");
                     }
                 }
             };
