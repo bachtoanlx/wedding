@@ -300,7 +300,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
         });
 
         // LIGHTBOX REDESIGN: MODERN LIGHT THEME
-// === LIGHTBOX (FINAL: TAP-TO-TOGGLE UI + VUỐT MƯỢT + ZOOM) ===
+// === LIGHTBOX (FINAL: SD/HD TRONG SUỐT + GẦN NÚT CHỌN) ===
         const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate }) => {
             if (!photo) return null;
             
@@ -308,12 +308,9 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             const [position, setPosition] = useState({ x: 0, y: 0 });
             const [isDragging, setIsDragging] = useState(false);
             
-            // State xử lý cảm ứng
             const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
             const [swipeOffset, setSwipeOffset] = useState(0);
             const [isSwiping, setIsSwiping] = useState(false);
-            
-            // [MỚI] State quản lý hiển thị nút bấm (UI)
             const [showUI, setShowUI] = useState(true); 
 
             const touchStartX = React.useRef(0);
@@ -333,7 +330,6 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 );
             };
 
-            // Smart Preloader
             useEffect(() => {
                 const preloadImage = (src) => {
                     const img = new Image();
@@ -350,13 +346,12 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 setPosition({ x: 0, y: 0 });
                 setSwipeOffset(0); 
                 lastTouchDistance.current = null;
-                setShowUI(true); // Luôn hiện UI khi mới chuyển sang ảnh mới
+                setShowUI(true); 
             }, [photo.id, photo.lightboxUrl, photo.url]);
             
             const goToPrev = useCallback(() => { if (prevPhoto) { onNavigate(prevPhoto); } }, [prevPhoto, onNavigate]);
             const goToNext = useCallback(() => { if (nextPhoto) { onNavigate(nextPhoto); } }, [nextPhoto, onNavigate]);
             
-            // --- XỬ LÝ TOUCH ---
             const onTouchStart = (e) => {
                 if (e.touches.length === 2) {
                     const distance = getDistance(e.touches);
@@ -405,20 +400,15 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 
             const onTouchEnd = () => {
                 lastTouchDistance.current = null;
-                
                 if (scale > 1) {
                     setIsDragging(false);
                 } else {
-                    // Logic Tap to Toggle UI
-                    // Nếu không vuốt (swipeOffset gần bằng 0) thì coi như là TAP
                     if (Math.abs(swipeOffset) < 5) {
-                        setShowUI(prev => !prev); // Ẩn/Hiện nút
+                        setShowUI(prev => !prev); 
                     }
-
                     if (!isSwiping) return;
                     setIsSwiping(false);
                     const minSwipeDistance = 15; 
-                    
                     if (swipeOffset > minSwipeDistance && prevPhoto) {
                         goToPrev();
                     } else if (swipeOffset < -minSwipeDistance && nextPhoto) {
@@ -487,7 +477,6 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     onTouchEnd={onTouchEnd}
                     style={{ touchAction: 'none' }}
                 >
-                    {/* BACKGROUND AMBILIGHT */}
                     <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
                         <img 
                             src={currentPhoto.url} 
@@ -497,14 +486,17 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                         <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
                     </div>
 
-                    {/* Thông báo SD/HD - Cũng ẩn hiện theo UI */}
-                    <div className={`absolute bottom-24 md:bottom-[104px] left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'}`}>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-md border ${isHighResLoaded ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                    {/* --- [SỬA] THÔNG BÁO SD/HD: DỜI XUỐNG GẦN NÚT CHỌN + NỀN TRONG SUỐT --- */}
+                    <div className={`absolute bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'}`}>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-sm border backdrop-blur-md ${
+                            isHighResLoaded 
+                            ? 'bg-green-100/40 text-green-800 border-green-200/50' // HD: Nền xanh trong suốt
+                            : 'bg-white/40 text-gray-600 border-white/50'          // SD: Nền trắng trong suốt
+                        }`}>
                             {isHighResLoaded ? 'HD' : 'SD'}
                         </span>
                     </div>
                     
-                    {/* Nút Close cũng ẩn/hiện theo UI trên Mobile (Desktop luôn hiện) */}
                     <button 
                         onClick={onClose} 
                         className={`absolute top-4 right-4 md:top-6 md:right-6 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}
@@ -519,7 +511,6 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                         </div>
                     </div>
 
-                    {/* Nút chọn ảnh - Quan trọng nên luôn hiện hoặc ẩn theo ý muốn (Ở đây tôi để ẩn cùng UI cho thoáng) */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); onToggleSelect(currentPhoto.id); }} 
                         className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 flex items-center gap-2 shadow-xl duration-300 ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} md:translate-y-0 md:opacity-100 md:pointer-events-auto ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
@@ -528,39 +519,25 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                         <span className="text-sm font-bold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
                     </button>
 
-                    {scale > 1 && (
-                        <button onClick={(e) => { e.stopPropagation(); resetZoom(); }} className="absolute top-6 left-1/2 -translate-x-1/2 text-gray-600 hover:text-gray-900 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-full transition-all z-50 text-sm">
-                            Reset Zoom
-                        </button>
-                    )}
-
-                    {/* NÚT PREV - MOBILE: Ẩn/Hiện theo showUI, DESKTOP: Luôn hiện nếu có */}
                     {prevPhoto && (
                         <button 
                             onClick={(e) => { e.stopPropagation(); goToPrev(); }} 
-                            className={`absolute left-2 top-[70%] md:top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-3 md:p-4 bg-white/60 md:bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50 backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}
+                            className={`hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-4 bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50`}
                         >
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
                         </button>
                     )}
                     
-                    {/* NÚT NEXT - MOBILE: Ẩn/Hiện theo showUI, DESKTOP: Luôn hiện nếu có */}
                     {nextPhoto && (
                         <button 
                             onClick={(e) => { e.stopPropagation(); goToNext(); }} 
-                            className={`absolute right-2 top-[70%] md:top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-3 md:p-4 bg-white/60 md:bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50 backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}
+                            className={`hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-4 bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50`}
                         >
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </button>
                     )}
 
-                    <div className="relative w-full h-full flex items-center justify-center" 
-                        onClick={(e) => {
-                            // Ngăn sự kiện click xuyên qua background đóng modal
-                            // Chỉ click vào vùng đen mới đóng, click vào vùng ảnh là để toggle UI
-                            e.stopPropagation(); 
-                        }}
-                    >
+                    <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => { e.stopPropagation(); }}>
                         
                         {prevPhoto && scale === 1 && (
                             <div className="hidden md:block absolute left-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToPrev(); }}>
