@@ -807,6 +807,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 			const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 			const cancelDownloadRef = React.useRef(false);
 			// [CẬP NHẬT] Hàm xử lý Download (Fix lỗi chặn Pop-up + Logic lọc thông minh)
+            // [CẬP NHẬT FIX ANDROID] Hàm xử lý Download
             const handleSmartDownload = async (type) => {
                 setShowDownloadMenu(false); 
                 cancelDownloadRef.current = false;
@@ -815,17 +816,13 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 
                 // --- 1. LOGIC LỌC ẢNH ---
                 if (type === 'SELECTED') {
-                    // Lấy tất cả ảnh đã tick
                     let selectedSource = photos.filter(p => p.isSelected);
-
-                    // Nếu đang xem 1 folder cụ thể -> Chỉ lọc ảnh thuộc folder đó
                     if (currentFolderId) {
                         const currentFolder = driveFolders.find(f => f.id === currentFolderId);
                         if (currentFolder) {
                             filesToDownload = selectedSource.filter(p => p.folderName === currentFolder.name);
                         }
                     } else {
-                        // Nếu đang xem Tất cả -> Lấy hết
                         filesToDownload = selectedSource;
                     }
 
@@ -851,16 +848,22 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     return;
                 }
 
-                if (!window.confirm(`Bạn muốn tải xuống ${filesToDownload.length} ảnh?`)) return;
+                // Thông báo khác nhau cho iOS và Android
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                const confirmMsg = isIOS 
+                    ? `Tải ${filesToDownload.length} ảnh?\n(Ảnh sẽ lưu vào ứng dụng 'Tệp/Files', không phải Album ảnh)`
+                    : `Tải ${filesToDownload.length} ảnh về máy?`;
+
+                if (!window.confirm(confirmMsg)) return;
 
                 setIsMovingFiles(true);
                 setMoveProgress({ current: 0, total: filesToDownload.length, fileName: '' });
 
-                // --- 2. QUY TRÌNH TẢI (DÙNG BLOB ĐỂ TRÁNH BỊ CHẶN) ---
+                // --- 2. QUY TRÌNH TẢI ---
                 for (let i = 0; i < filesToDownload.length; i++) {
                     if (cancelDownloadRef.current) {
                         setIsMovingFiles(false);
-                        showToast(`Đã hủy! Tải được ${i}/${filesToDownload.length} ảnh.`, "info");
+                        showToast(`Đã hủy!`, "info");
                         return; 
                     }
 
@@ -868,51 +871,47 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: photo.name });
                     
                     try {
-                        // Ưu tiên link gốc, fallback sang các link khác
                         const downloadUrl = photo.originalUrl || photo.lightboxUrl || photo.url;
                         
-                        // Bước A: Tải dữ liệu ảnh về bộ nhớ đệm (Fetch)
-                        // Cách này giúp trình duyệt hiểu đây là hành động tải file nội bộ, không phải mở tab spam
+                        // Tải file về Blob
                         const response = await fetch(downloadUrl);
                         if (!response.ok) throw new Error("Fetch failed");
                         
-                        const blob = await response.blob();
+                        const blobData = await response.blob();
+                        
+                        // [QUAN TRỌNG FIX ANDROID]: Ép kiểu file là ảnh JPEG
+                        const blob = new Blob([blobData], { type: 'image/jpeg' });
                         const blobUrl = URL.createObjectURL(blob);
 
-                        // Bước B: Tạo link ảo để lưu file từ bộ nhớ đệm
+                        // [QUAN TRỌNG FIX ANDROID]: Đảm bảo tên file có đuôi .jpg
+                        let fileName = photo.name;
+                        if (!fileName.toLowerCase().endsWith('.jpg') && !fileName.toLowerCase().endsWith('.jpeg') && !fileName.toLowerCase().endsWith('.png')) {
+                            fileName += '.jpg';
+                        }
+
                         const link = document.createElement('a');
                         link.href = blobUrl;
-                        link.download = photo.name; // Tên file khi lưu
+                        link.download = fileName; 
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
                         
-                        // Dọn dẹp bộ nhớ
                         URL.revokeObjectURL(blobUrl);
                         
-                        // Nghỉ 1 chút để máy không bị đơ
-                        await new Promise(r => setTimeout(r, 500)); 
+                        // Tăng thời gian nghỉ lên 1s để Android kịp quét file
+                        await new Promise(r => setTimeout(r, 1000)); 
 
                     } catch (err) {
                         console.error("Lỗi tải:", photo.name, err);
-                        // Nếu Fetch lỗi (do CORS), thử Fallback mở tab mới (có thể bị chặn nhưng còn hơn không)
-                        const fallbackLink = document.createElement('a');
-                        fallbackLink.href = photo.originalUrl || photo.url;
-                        fallbackLink.download = photo.name;
-                        fallbackLink.target = "_blank";
-                        document.body.appendChild(fallbackLink);
-                        fallbackLink.click();
-                        document.body.removeChild(fallbackLink);
                     }
                 }
                 setIsMovingFiles(false);
                 
                 if (!cancelDownloadRef.current) {
-                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
                     if (isIOS) {
-                        showToast("✅ Đã lưu vào tệp (Files). Kiểm tra thư mục Tải về!", "success");
+                        showToast("✅ Đã xong! Hãy mở app 'Tệp' (Files) để xem.", "success");
                     } else {
-                        showToast("✅ Đã tải xong!", "success");
+                        showToast("✅ Đã tải xong! Kiểm tra mục 'Downloads' trong thư viện.", "success");
                     }
                 }
             };
