@@ -258,9 +258,16 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 <div className="absolute md:translate-y-2 md:group-hover:translate-y-0 bottom-0 left-0 right-0 p-3 transition-transform duration-300 bg-white/95 border-t border-gray-100">
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-medium text-gray-700 truncate max-w-[120px]">{photo.name}</span>
-                        <button onClick={handleToggleClick} className={`p-2 rounded-full transition-colors duration-200 shadow-sm ${photo.isSelected ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-400 md:hover:bg-gray-200'}`}>
-                            {viewMode === 'CLIENT' ? <Icon name="heart" size={18} fill={photo.isSelected ? "currentColor" : "none"} /> : <Icon name="checkCircle" size={18} />}
-                        </button>
+                        {/* [ĐÃ SỬA] NÚT TIM TO HƠN - DỄ BẤM HƠN TRÊN MOBILE */}
+						<button 
+							onClick={handleToggleClick} 
+							// Thay đổi chính: Thêm 'w-11 h-11 flex items-center justify-center' để tạo vùng bấm chuẩn 44px
+							// Thêm '-mr-2' để căn lề phải đẹp hơn khi nút to ra
+							className={`w-11 h-11 flex items-center justify-center -mr-2 rounded-full transition-colors duration-200 ${photo.isSelected ? 'bg-pink-500 text-white shadow-md' : 'bg-transparent text-gray-400 hover:bg-gray-100'}`}
+						>
+							{/* Tăng size icon từ 18 lên 22 cho cân đối */}
+							{viewMode === 'CLIENT' ? <Icon name="heart" size={22} fill={photo.isSelected ? "currentColor" : "none"} /> : <Icon name="checkCircle" size={22} />}
+						</button>
                     </div>
 
                     {(photo.isSelected || photo.comments) && (
