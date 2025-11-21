@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LensFlow - Client Proofing</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,7 +12,22 @@
         darkMode: 'class',
         theme: {
           extend: {
-            colors: { gray: { 850: '#1f2937', 900: '#111827', 950: '#030712' } },
+            colors: { 
+                // PALETTE MỚI: WARM STONE & SOFT GRAY (Hiện đại, dịu mắt)
+                gray: { 
+                    50: '#fafaf9',  // Warm white (Stone-50) - Nền chính
+                    100: '#f5f5f4', // Stone-100 - Nền phụ
+                    200: '#e7e5e4', // Stone-200 - Border nhạt
+                    300: '#d6d3d1', 
+                    400: '#a8a29e', 
+                    500: '#78716c', // Text phụ
+                    600: '#57534e', 
+                    700: '#44403c', 
+                    800: '#292524', // Text chính (Soft Black)
+                    900: '#1c1917', 
+                    950: '#0c0a09' 
+                } 
+            },
             fontFamily: { sans: ['Inter', 'sans-serif'] }
           }
         }
@@ -20,24 +36,45 @@
 
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-      body { font-family: 'Inter', sans-serif; background-color: #030712; color: white; margin: 0; }
+      body { 
+          font-family: 'Inter', sans-serif; 
+          /* Sử dụng nền Warm Stone dịu mắt thay vì trắng toát */
+          background-color: #fafaf9; 
+          color: #292524; 
+          margin: 0;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+      }
+      /* Tối ưu scroll cho iOS */
+      html, body {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: none;
+      }
       ::-webkit-scrollbar { width: 8px; }
-      ::-webkit-scrollbar-track { background: #111827; }
-      ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+      ::-webkit-scrollbar-track { background: #f5f5f4; }
+      ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
       input[type="password"]::-ms-reveal,
       input[type="password"]::-ms-clear { display: none; }
+      
+      .gpu-accelerated {
+        transform: translateZ(0);
+      }
+      /* FIX LAG CHO IPHONE */
+      .ios-scroll-fix {
+        -webkit-overflow-scrolling: touch;
+        will-change: transform;
+        transform: translateZ(0); /* Kích hoạt card đồ họa GPU */
+      }
     </style>
 </head>
 <body>
     <div id="root"></div>
-
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    
     <script>
         // === CẤU HÌNH FIREBASE CỦA BẠN - HÃY THAY THẾ CÁC PLACEHOLDER ===
         const firebaseConfig = {
@@ -65,7 +102,8 @@
         const objectToArray = (object) => object ? Object.values(object) : [];
 
         // === ICON COMPONENT ===
-        const Icon = ({ name, size = 24, className = "", fill = "none", stroke = "currentColor" }) => {
+        // Memoized to prevent unnecessary re-renders
+        const Icon = React.memo(({ name, size = 24, className = "", fill = "none", stroke = "currentColor" }) => {
             const icons = {
                 heart: <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>,
                 check: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>,
@@ -92,7 +130,8 @@
                 menu: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             };
             return icons[name] || null;
-        };
+        });
+        
         // === PASSCODE/INITIALIZATION MODAL COMPONENT ===
 const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey }) => {
     const [input, setInput] = useState('');
@@ -118,16 +157,16 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-gray-950 flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-gray-700 p-8 rounded-2xl max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-md w-full shadow-2xl">
                 <div className="flex justify-center mb-6 text-pink-500">
                     <Icon name={isInitialized ? "lock" : "shield"} size={48} />
                 </div>
-                <h2 className="text-2xl font-bold text-center mb-2">
-                    {isInitialized ? 'Truy Cập Album (Khách hàng)' : 'Khởi Tạo Album Lần Đầu'}
+                <h2 className="text-2xl font-bold text-center mb-2 text-gray-900">
+                    {isInitialized ? 'Truy Cập Album' : 'Khởi Tạo Album'}
                 </h2>
-                <p className="text-sm text-gray-400 text-center mb-6">
-                    {isInitialized ? `Mã truy cập album: ${albumKey}` : 'Vui lòng tạo mật khẩu Admin và Mã truy cập Khách hàng.'}
+                <p className="text-sm text-gray-500 text-center mb-6">
+                    {isInitialized ? `Album: ${albumKey}` : 'Vui lòng tạo mật khẩu Admin và Mã truy cập.'}
                 </p>
 
                 <form onSubmit={handleLogin}>
@@ -139,10 +178,10 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                                 if (internalError) {
                                     setInternalError(false); // Xóa lỗi khi người dùng bắt đầu nhập lại
                                 }
-                            }} placeholder="Mã truy cập Khách hàng (Passcode)" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4" />
-                            {internalError && <p className="text-red-400 text-xs text-center mb-4">Mã truy cập không hợp lệ.</p>}
-                            <button type="submit" className="w-full py-3 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-bold">
-                                Truy Cập Album
+                            }} placeholder="Nhập mã truy cập (Passcode)" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4 placeholder-gray-400" />
+                            {internalError && <p className="text-red-500 text-xs text-center mb-4">Mã truy cập không hợp lệ.</p>}
+                            <button type="submit" className="w-full py-3 rounded-lg bg-pink-500 hover:bg-pink-400 text-white font-bold shadow-lg shadow-pink-500/30 transition-all">
+                                Vào Xem Album
                             </button>
                         </>
                     )}
@@ -150,11 +189,11 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     {/* CHẾ ĐỘ KHỞI TẠO LẦN ĐẦU (ADMIN ONLY) */}
                     {!isInitialized && (
                         <>
-                            <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="Tạo Mật khẩu Admin (Quan trọng!)" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-3" />
-                            <input type="text" value={newPasscode} onChange={(e) => setNewPasscode(e.target.value)} placeholder="Tạo Mã truy cập Khách hàng (Passcode)" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4" />
-                            {error && <p className="text-red-400 text-xs text-center mb-4">{error}</p>}
-                            <button type="submit" disabled={!adminPassword || !newPasscode} className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold disabled:opacity-50">
-                                Khởi Tạo & Truy Cập Admin
+                            <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="Tạo Mật khẩu Admin" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-3" />
+                            <input type="text" value={newPasscode} onChange={(e) => setNewPasscode(e.target.value)} placeholder="Tạo Mã truy cập Khách" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4" />
+                            {error && <p className="text-red-500 text-xs text-center mb-4">{error}</p>}
+                            <button type="submit" disabled={!adminPassword || !newPasscode} className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold disabled:opacity-50 shadow-lg">
+                                Khởi Tạo & Truy Cập
                             </button>
                         </>
                     )}
@@ -164,115 +203,213 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
     );
 };
         // === PHOTOCARD & LIGHTBOX COMPONENTS ===
-        const PhotoCard = ({ photo, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments }) => {
-            const cardRef = React.useRef(null);
-            const [isVisible, setIsVisible] = useState(false);
-
+        // OPTIMIZED: Removed IntersectionObserver in favor of native lazy loading + onLoad state for performance
+        const PhotoCard = React.memo(({ photo, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments }) => {
+            // Sử dụng state đơn giản để fade-in ảnh khi đã load xong
+            const [isLoaded, setIsLoaded] = useState(false);
+            
+            // Local state for comment to prevent lagging while typing
+            const [localComment, setLocalComment] = useState(photo.comments || "");
+            
+            // Sync local comment if prop changes externally
             useEffect(() => {
-                const observer = new IntersectionObserver(
-                    ([entry]) => {
-                        if (entry.isIntersecting) {
-                            setIsVisible(true);
-                            observer.unobserve(cardRef.current); // Tải 1 lần rồi thôi
-                        }
-                    },
-                    { rootMargin: "200px" } // Bắt đầu tải ảnh khi còn cách màn hình 200px
-                );
+                setLocalComment(photo.comments || "");
+            }, [photo.comments]);
 
-                if (cardRef.current) {
-                    observer.observe(cardRef.current);
+            // Handle blur to save comment -> Performance optimization
+            const handleCommentBlur = useCallback(() => {
+                if (localComment !== photo.comments) {
+                    onUpdateComment(photo.id, localComment);
                 }
+            }, [localComment, photo.comments, photo.id, onUpdateComment]);
 
-                return () => observer.disconnect();
-            }, []);
+            // Optimized Click Handler
+            const handleCardClick = useCallback(() => {
+                 onOpenView(photo);
+            }, [photo, onOpenView]);
+
+            const handleToggleClick = useCallback((e) => {
+                 e.stopPropagation();
+                 onToggleSelect(photo.id);
+            }, [photo.id, onToggleSelect]);
 
             return (
-            <div ref={cardRef} className={`relative group md:rounded-lg overflow-hidden bg-gray-900 md:border transition-all duration-300 ${photo.isSelected ? 'border-pink-500 md:ring-1 md:ring-pink-500' : 'border-gray-800 md:hover:border-gray-600'}`}>
-                <div className="aspect-[3/4] md:aspect-[4/5] cursor-pointer overflow-hidden relative" onClick={() => onOpenView(photo)}>
-                    {isVisible ? (
-                        <img src={photo.url} alt={photo.name} className="w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-105"/>
-                    ) : (
-                        <div className="w-full h-full bg-gray-800 animate-pulse"></div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300" />
+            <div className={`relative group md:rounded-xl overflow-hidden bg-white md:shadow-sm transition-all duration-200 ${photo.isSelected ? 'ring-2 ring-pink-500 shadow-md' : 'md:hover:shadow-lg'}`}>
+                <div className="aspect-[3/4] md:aspect-[4/5] cursor-pointer overflow-hidden relative bg-gray-100" onClick={handleCardClick}>
+                    {/* Native Lazy Loading + Opacity Transition (Faster on iOS) */}
+                    <div className={`w-full h-full bg-gray-100 transition-opacity duration-500 ${isLoaded ? 'opacity-0 absolute' : 'opacity-100'}`} />
+                    <img 
+                        src={photo.url} 
+                        alt="" 
+                        loading="lazy"
+                        onLoad={() => setIsLoaded(true)}
+                        className={`w-full h-full object-cover transition-all duration-500 md:group-hover:scale-105 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+                        style={{ transform: 'translateZ(0)' }} 
+                    />
+                    
+                    {/* Overlay: Simple gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
 
-                {/* Trên mobile, các nút sẽ luôn hiển thị. Trên desktop, chúng sẽ hiện khi hover. */}
-                <div className="absolute md:translate-y-2 md:group-hover:translate-y-0 bottom-0 left-0 right-0 p-3 transition-transform duration-300 bg-gray-900/95 backdrop-blur-sm">
+                {/* Controls: Solid White Background for performance and clean look */}
+                <div className="absolute md:translate-y-2 md:group-hover:translate-y-0 bottom-0 left-0 right-0 p-3 transition-transform duration-300 bg-white/95 border-t border-gray-100">
                     <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs text-gray-400 truncate max-w-[120px]">{photo.name}</span>
-                        <button onClick={(e) => { e.stopPropagation(); onToggleSelect(photo.id); }} className={`p-2 rounded-full transition-colors duration-200 ${photo.isSelected ? 'bg-pink-500 text-white' : 'bg-gray-800 text-gray-400 md:hover:bg-gray-700'}`}>
+                        <span className="text-xs font-medium text-gray-700 truncate max-w-[120px]">{photo.name}</span>
+                        <button onClick={handleToggleClick} className={`p-2 rounded-full transition-colors duration-200 shadow-sm ${photo.isSelected ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-400 md:hover:bg-gray-200'}`}>
                             {viewMode === 'CLIENT' ? <Icon name="heart" size={18} fill={photo.isSelected ? "currentColor" : "none"} /> : <Icon name="checkCircle" size={18} />}
                         </button>
                     </div>
 
                     {(photo.isSelected || photo.comments) && (
                         <div className="relative">
-                            {/* Trên mobile, tiêu đề "Yêu cầu chỉnh sửa" sẽ được ẩn đi để gọn hơn nếu chưa có comment */}
-                            <div className={`flex items-center gap-2 text-gray-400 mb-1 ${
+                            <div className={`flex items-center gap-2 text-gray-500 mb-1 ${
                                 viewMode === 'CLIENT' && !photo.comments && 'hidden'
                             }`}>
                                 <Icon name="message" size={12} />
-                                <span className="text-[10px] uppercase font-semibold tracking-wider">Yêu cầu chỉnh sửa</span>
+                                <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">Yêu cầu chỉnh sửa</span>
                             </div>
                             {viewMode === 'CLIENT' ? (
                                 allowComments ? (
-                                    <textarea value={photo.comments} onChange={(e) => onUpdateComment(photo.id, e.target.value)} placeholder="Ví dụ: Xóa rác bên trái, bóp eo..." className="w-full bg-gray-800 text-xs text-white p-2 rounded border border-gray-700 focus:border-pink-500 focus:outline-none resize-none h-16" />
+                                    <textarea 
+                                        value={localComment} 
+                                        onChange={(e) => setLocalComment(e.target.value)} 
+                                        onBlur={handleCommentBlur}
+                                        placeholder="Ví dụ: Xóa rác, bóp eo..." 
+                                        className="w-full bg-gray-50 text-xs text-gray-800 p-2 rounded-lg border border-gray-200 focus:border-pink-500 focus:bg-white focus:outline-none resize-none h-16 transition-colors" 
+                                    />
                                 ) : photo.comments ? (
-                                    <div className="w-full bg-gray-800/50 text-xs text-gray-300 p-2 rounded border border-gray-700/50 min-h-[40px] italic opacity-70">{photo.comments}</div>
+                                    <div className="w-full bg-gray-50 text-xs text-gray-600 p-2 rounded border border-gray-200 min-h-[40px] italic opacity-80">{photo.comments}</div>
                                 ) : null
                             ) : (
-                                <div className="w-full bg-gray-800/50 text-xs text-gray-300 p-2 rounded border border-gray-700/50 min-h-[40px] italic">{photo.comments || "Không có ghi chú."}</div>
+                                <div className="w-full bg-gray-50 text-xs text-gray-600 p-2 rounded border border-gray-200 min-h-[40px] italic">{photo.comments || "Không có ghi chú."}</div>
                             )}
                         </div>
                     )}
                 </div>
                 
                 {photo.isSelected && (
-                    <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10">CHỌN</div>
+                    <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md z-10">ĐÃ CHỌN</div>
                 )}
             </div>
             );
-        };
+        }, (prevProps, nextProps) => {
+            // Optimization: Only re-render if specific props change
+            return prevProps.photo === nextProps.photo && 
+                   prevProps.viewMode === nextProps.viewMode &&
+                   prevProps.allowComments === nextProps.allowComments;
+        });
 
+        // LIGHTBOX REDESIGN: MODERN LIGHT THEME
+// === LIGHTBOX (FINAL: FIX LỖI KHÔNG KÉO ĐƯỢC KHI ZOOM) ===
         const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate }) => {
             if (!photo) return null;
             
             const [scale, setScale] = useState(1);
             const [position, setPosition] = useState({ x: 0, y: 0 });
             const [isDragging, setIsDragging] = useState(false);
+            
+            // Dùng State để lưu điểm bắt đầu kéo (cho cả Mouse và Touch)
             const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-            // State để quản lý việc tải và hiển thị ảnh chất lượng cao
+            
             const [isLoadingHighRes, setIsLoadingHighRes] = useState(false);
             const [isHighResLoaded, setIsHighResLoaded] = useState(false);
+            
+            // State xử lý vuốt (Swipe)
+            const [swipeOffset, setSwipeOffset] = useState(0);
+            const [isSwiping, setIsSwiping] = useState(false);
+            const touchStartX = React.useRef(0);
             
             const currentPhoto = allPhotos[currentIndex] || photo;
             const prevPhoto = currentIndex > 0 ? allPhotos[currentIndex - 1] : null;
             const nextPhoto = currentIndex < allPhotos.length - 1 ? allPhotos[currentIndex + 1] : null;
 
+            // Smart Preloader
             useEffect(() => {
-                // Reset lại URL và trạng thái tải khi chuyển ảnh
+                const preloadImage = (src) => {
+                    const img = new Image();
+                    img.src = src;
+                };
+                if (nextPhoto) preloadImage(nextPhoto.lightboxUrl || nextPhoto.url);
+                if (prevPhoto) preloadImage(prevPhoto.lightboxUrl || prevPhoto.url);
+            }, [currentIndex, nextPhoto, prevPhoto]);
+
+            useEffect(() => {
                 setIsLoadingHighRes(false);
                 setIsHighResLoaded(false);
                 setScale(1);
                 setPosition({ x: 0, y: 0 });
+                setSwipeOffset(0); 
             }, [photo.id, photo.lightboxUrl, photo.url]);
             
-            const goToPrev = useCallback(() => {
-                if (prevPhoto) { onNavigate(prevPhoto); }
-            }, [prevPhoto, onNavigate]);
+            const goToPrev = useCallback(() => { if (prevPhoto) { onNavigate(prevPhoto); } }, [prevPhoto, onNavigate]);
+            const goToNext = useCallback(() => { if (nextPhoto) { onNavigate(nextPhoto); } }, [nextPhoto, onNavigate]);
             
-            const goToNext = useCallback(() => {
-                if (nextPhoto) { onNavigate(nextPhoto); }
-            }, [nextPhoto, onNavigate]);
-            
+            // --- [QUAN TRỌNG] XỬ LÝ CẢM ỨNG ĐA NĂNG (VUỐT & KÉO) ---
+            const onTouchStart = (e) => {
+                // Nếu chạm bằng 1 ngón
+                if (e.touches.length === 1) {
+                    if (scale > 1) {
+                        // TRƯỜNG HỢP 1: ĐANG ZOOM -> CHẾ ĐỘ KÉO ẢNH (PAN)
+                        setIsDragging(true);
+                        // Tính toán điểm lệch giữa ngón tay và vị trí ảnh hiện tại
+                        setDragStart({ 
+                            x: e.touches[0].clientX - position.x, 
+                            y: e.touches[0].clientY - position.y 
+                        });
+                    } else {
+                        // TRƯỜNG HỢP 2: KHÔNG ZOOM -> CHẾ ĐỘ VUỐT ĐỔI ẢNH (SWIPE)
+                        setIsSwiping(true);
+                        touchStartX.current = e.targetTouches[0].clientX;
+                    }
+                }
+            }
+
+            const onTouchMove = (e) => {
+                if (e.touches.length === 1) {
+                    if (scale > 1 && isDragging) {
+                        // LOGIC KÉO ẢNH (PAN)
+                        // Vị trí mới = Vị trí ngón tay - Điểm lệch ban đầu
+                        setPosition({ 
+                            x: e.touches[0].clientX - dragStart.x, 
+                            y: e.touches[0].clientY - dragStart.y 
+                        });
+                    } else if (scale === 1 && isSwiping) {
+                        // LOGIC VUỐT (SWIPE)
+                        const currentX = e.targetTouches[0].clientX;
+                        const diff = currentX - touchStartX.current;
+                        setSwipeOffset(diff * 0.2); 
+                    }
+                }
+            }
+
+            const onTouchEnd = () => {
+                if (scale > 1) {
+                    // Kết thúc kéo
+                    setIsDragging(false);
+                } else {
+                    // Kết thúc vuốt
+                    if (!isSwiping) return;
+                    setIsSwiping(false);
+                    const minSwipeDistance = 15; 
+                    
+                    if (swipeOffset > minSwipeDistance && prevPhoto) {
+                        goToPrev();
+                    } else if (swipeOffset < -minSwipeDistance && nextPhoto) {
+                        goToNext();
+                    } else {
+                        setSwipeOffset(0);
+                    }
+                }
+            }
+            // -------------------------------------------------------
+
             const handleWheel = (e) => {
                 e.preventDefault();
                 const delta = e.deltaY > 0 ? 0.9 : 1.1;
                 setScale(prev => Math.max(1, Math.min(prev * delta, 4)));
             };
             
+            // Xử lý chuột (Desktop)
             const handleMouseDown = (e) => {
                 if (scale > 1) {
                     setIsDragging(true);
@@ -287,16 +424,23 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             };
             
             const handleMouseUp = () => setIsDragging(false);
-            
-            const resetZoom = () => {
-                setScale(1);
-                setPosition({ x: 0, y: 0 });
-            };
+            const resetZoom = () => { setScale(1); setPosition({ x: 0, y: 0 }); };
+            const handleLoadHighRes = () => { setIsLoadingHighRes(true); };
 
-            const handleLoadHighRes = (e) => {
+            useEffect(() => {
+                if (scale > 1.5 && !isHighResLoaded && !isLoadingHighRes) {
+                    handleLoadHighRes();
+                }
+            }, [scale, isHighResLoaded, isLoadingHighRes]);
+
+            const handleDoubleClick = (e) => {
+                e.preventDefault();
                 e.stopPropagation();
-                // Bắt đầu quá trình tải
-                setIsLoadingHighRes(true);
+                if (scale === 1) {
+                    setScale(2); // Zoom nhanh
+                } else {
+                    resetZoom(); // Trả về
+                }
             };
             
             useEffect(() => {
@@ -310,63 +454,78 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             }, [goToPrev, goToNext, onClose]);
             
             return (
-                <div className="fixed inset-0 z-50 bg-black flex items-center justify-center overflow-hidden" onClick={onClose}>
-                    <button onClick={onClose} className="absolute top-4 right-4 md:top-6 md:right-6 text-white/60 hover:text-white p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm">
-                        <Icon name="x" size={28} />
+                <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden" 
+                    onClick={onClose}
+                    // Gắn sự kiện cảm ứng đã nâng cấp
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                    style={{ touchAction: 'none' }}
+                >
+                    {/* BACKGROUND AMBILIGHT */}
+                    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+                        <img 
+                            src={currentPhoto.url} 
+                            className="w-full h-full object-cover blur-3xl scale-150 opacity-60 transition-all duration-500 ease-linear"
+                            alt="" 
+                        />
+                        <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
+                    </div>
+
+                    {/* Thông báo SD/HD */}
+                    <div className="absolute bottom-24 md:bottom-[104px] left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-md border ${isHighResLoaded ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                            {isHighResLoaded ? 'HD' : 'SD'}
+                        </span>
+                    </div>
+                    
+                    <button onClick={onClose} className="absolute top-4 right-4 md:top-6 md:right-6 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md">
+                        <Icon name="x" size={24} />
                     </button>
 
-                    <div className="absolute top-4 left-4 md:top-6 md:left-6 text-white/80 z-50 backdrop-blur-sm bg-white/5 px-4 py-2 rounded-lg max-w-[calc(100%-6rem)]">
-                        <p className="text-sm font-medium mb-1 truncate">{currentPhoto.name}</p>
-                        <p className="text-xs text-gray-400">{currentIndex + 1} / {allPhotos.length} {scale > 1 && `• Zoom: ${Math.round(scale * 100)}%`}</p>
+                    <div className="absolute top-4 left-4 md:top-6 md:left-6 z-50 bg-white/80 border border-gray-100 backdrop-blur px-4 py-2 rounded-full shadow-sm max-w-[calc(100%-6rem)]">
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-bold text-gray-800 truncate">{currentPhoto.name}</span>
+                            <span className="text-xs text-gray-400 border-l border-gray-300 pl-3">{currentIndex + 1} / {allPhotos.length} {scale > 1 && `• ${Math.round(scale * 100)}%`}</span>
+                        </div>
                     </div>
 
                     <button 
                         onClick={(e) => { e.stopPropagation(); onToggleSelect(currentPhoto.id); }} 
-                        className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 backdrop-blur-sm flex items-center gap-2 ${currentPhoto.isSelected ? 'bg-pink-500 text-white' : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'}`}
+                        className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 flex items-center gap-2 shadow-xl ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
                     >
                         <Icon name="heart" size={24} fill={currentPhoto.isSelected ? "currentColor" : "none"} />
-                        <span className="text-sm font-semibold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
+                        <span className="text-sm font-bold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
                     </button>
 
-                    {/* Nút xem ảnh gốc */}
-                    {!isHighResLoaded && (
-                        <button 
-                            onClick={handleLoadHighRes}
-                            disabled={isLoadingHighRes}
-                            className="absolute bottom-6 md:bottom-8 right-4 text-white/60 hover:text-white px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm text-sm flex items-center gap-2 disabled:opacity-50"
-                        >
-                            {isLoadingHighRes 
-                                ? <><Icon name="loader" size={16} /> Đang tải...</>
-                                : <><Icon name="eye" size={16} /> Ảnh gốc</>
-                            }
-                        </button>
-                    )}
-
                     {scale > 1 && (
-                        <button onClick={(e) => { e.stopPropagation(); resetZoom(); }} className="absolute top-6 left-1/2 -translate-x-1/2 text-white/60 hover:text-white px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm text-sm">
+                        <button onClick={(e) => { e.stopPropagation(); resetZoom(); }} className="absolute top-6 left-1/2 -translate-x-1/2 text-gray-600 hover:text-gray-900 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-full transition-all z-50 text-sm">
                             Reset Zoom
                         </button>
                     )}
 
                     {prevPhoto && (
-                        <button onClick={(e) => { e.stopPropagation(); goToPrev(); }} className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-2 md:p-4 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        <button onClick={(e) => { e.stopPropagation(); goToPrev(); }} className="absolute left-2 top-[70%] -translate-y-1/2 text-gray-600 hover:text-gray-900 p-3 bg-white/60 border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50 backdrop-blur-md">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
                         </button>
                     )}
+                    
                     {nextPhoto && (
-                        <button onClick={(e) => { e.stopPropagation(); goToNext(); }} className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-2 md:p-4 bg-white/5 hover:bg-white/10 rounded-full transition-all z-50 backdrop-blur-sm">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        <button onClick={(e) => { e.stopPropagation(); goToNext(); }} className="absolute right-2 top-[70%] -translate-y-1/2 text-gray-600 hover:text-gray-900 p-3 bg-white/60 border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50 backdrop-blur-md">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </button>
                     )}
 
                     <div className="relative w-full h-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                        
                         {prevPhoto && scale === 1 && (
-                            <div className="absolute left-[10%] top-1/2 -translate-y-1/2 w-[18vw] h-[58vh] opacity-30 blur-[2px] scale-95 transition-all duration-500 cursor-pointer hover:opacity-50 hover:scale-100 hover:blur-[1px]" onClick={(e) => { e.stopPropagation(); goToPrev(); }}>
-                                <img src={prevPhoto.url} alt={prevPhoto.name} className="w-full h-full object-cover rounded-lg shadow-2xl" />
+                            <div className="hidden md:block absolute left-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToPrev(); }}>
+                                <img src={prevPhoto.url} alt="" className="w-full h-full object-cover rounded-lg shadow-lg" />
                             </div>
                         )}
 
-                        <div className="relative z-10 w-full md:w-[60vw] h-full md:h-[92vh] flex items-center justify-center">
+                        <div className="relative z-10 w-full md:w-[70vw] h-full md:h-[90vh] flex items-center justify-center">
                             <div 
                                 className="relative w-full h-full flex items-center justify-center"
                                 onWheel={handleWheel}
@@ -374,53 +533,201 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                                 onMouseMove={handleMouseMove}
                                 onMouseUp={handleMouseUp}
                                 onMouseLeave={handleMouseUp}
+                                onDoubleClick={handleDoubleClick}
                                 style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
                             >
-                                {/* Ảnh chất lượng thấp (luôn hiển thị) */}
                                 <img 
                                     src={photo.lightboxUrl || photo.url}
-                                    alt={currentPhoto.name}
-                                    className={`absolute inset-0 w-full h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300 ${isHighResLoaded ? 'opacity-0' : 'opacity-100'}`}
+                                    alt=""
+                                    className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-0' : 'opacity-100'}`}
                                     style={{ 
-                                        transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
-                                        transformOrigin: 'center'
+                                        // Khi Scale > 1, ưu tiên dùng Position X/Y để kéo
+                                        transform: scale > 1 
+                                            ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`
+                                            : `translateX(${swipeOffset}px)`,
+                                        transformOrigin: 'center',
+                                        // Khi đang Kéo (dragging) hoặc Vuốt (swiping), tắt transition để phản hồi tức thì
+                                        transition: (isSwiping || isDragging) ? 'none' : 'transform 0.2s ease-out' 
                                     }}
                                     draggable={false}
                                 />
-                                {/* Ảnh chất lượng cao (tải nền và hiển thị khi sẵn sàng) */}
+                                
                                 {(isLoadingHighRes || isHighResLoaded) && (
                                     <img 
                                         src={photo.originalUrl}
-                                        alt={currentPhoto.name}
+                                        alt=""
                                         onLoad={() => { setIsLoadingHighRes(false); setIsHighResLoaded(true); }}
-                                        className={`absolute inset-0 w-full h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300 ${isHighResLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                        className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-100' : 'opacity-0'}`}
                                         style={{ 
-                                            transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
-                                            transformOrigin: 'center'
+                                            transform: scale > 1 
+                                                ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`
+                                                : `translateX(${swipeOffset}px)`,
+                                            transformOrigin: 'center',
+                                            transition: (isSwiping || isDragging) ? 'none' : 'transform 0.2s ease-out'
                                         }}
                                         draggable={false}
                                     />
                                 )}
-                                {currentPhoto.isSelected && (
-                                    <div className="absolute top-4 right-4 bg-pink-500 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-                                        <Icon name="heart" size={16} fill="currentColor" />
-                                        <span>ĐÃ CHỌN</span>
-                                    </div>
-                                )}
                             </div>
                         </div>
 
-                        {nextPhoto && scale === 1 && ( // Ẩn ảnh preview trên mobile
-                            <div className="hidden md:block absolute right-[10%] top-1/2 -translate-y-1/2 w-[18vw] h-[58vh] opacity-30 blur-[2px] scale-95 transition-all duration-500 cursor-pointer hover:opacity-50 hover:scale-100 hover:blur-[1px]" onClick={(e) => { e.stopPropagation(); goToNext(); }}>
-                                <img src={nextPhoto.url} alt={nextPhoto.name} className="w-full h-full object-cover rounded-lg shadow-2xl" />
+                        {nextPhoto && scale === 1 && (
+                            <div className="hidden md:block absolute right-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToNext(); }}>
+                                <img src={nextPhoto.url} alt="" className="w-full h-full object-cover rounded-lg shadow-lg" />
                             </div>
                         )}
                     </div>
                 </div>
             );
         };
+//
+// === [MỚI] COMPONENT LƯỚI ẢO TỰ VIẾT (Thay thế react-window) ===
+        // Giúp web chạy mượt mà không cần tải thư viện ngoài
+        const SimpleFixedSizeGrid = React.memo(({ columnCount, columnWidth, height, rowCount, rowHeight, width, children: Cell, itemData, className, style, overscanRowCount = 2 }) => {
+            const [scrollTop, setScrollTop] = useState(0);
+            const containerRef = React.useRef(null);
 
-        // === HOME PAGE COMPONENT ===
+            const handleScroll = (e) => {
+                setScrollTop(e.target.scrollTop);
+            };
+
+            // Tính toán hàng bắt đầu và kết thúc dựa trên vị trí cuộn
+            const startIndex = Math.floor(scrollTop / rowHeight);
+            const endIndex = Math.min(
+                rowCount - 1,
+                Math.floor((scrollTop + height) / rowHeight) + overscanRowCount
+            );
+
+            const items = [];
+            // Render thêm 1 hàng đệm phía trên để tránh bị trắng khi cuộn ngược
+            const renderStart = Math.max(0, startIndex - 1); 
+            
+            for (let rowIndex = renderStart; rowIndex <= endIndex; rowIndex++) {
+                for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+                    const key = `${rowIndex}-${columnIndex}`;
+                    const itemStyle = {
+                        position: 'absolute',
+                        top: rowIndex * rowHeight,
+                        left: columnIndex * columnWidth,
+                        height: rowHeight,
+                        width: columnWidth,
+                    };
+                    
+                    items.push(
+                        <Cell 
+                            key={key}
+                            columnIndex={columnIndex}
+                            rowIndex={rowIndex}
+                            style={itemStyle}
+                            data={itemData}
+                        />
+                    );
+                }
+            }
+
+            return (
+                <div 
+                    className={className}
+                    style={{ ...style, height, width, overflow: 'auto', position: 'relative', WebkitOverflowScrolling: 'touch' }}
+                    onScroll={handleScroll}
+                >
+                    <div style={{ height: rowCount * rowHeight, width: '100%', position: 'relative' }}>
+                        {items}
+                    </div>
+                </div>
+            );
+        });
+// === VIRTUAL GRID COMPONENT (ĐÃ TỐI ƯU CHO IPHONE) ===
+        // === VIRTUAL GRID COMPONENT (FIX LỖI HOOK #310) ===
+        const VirtualPhotoGrid = React.memo(({ photos, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments }) => {
+            // 1. KHAI BÁO TẤT CẢ HOOK TRƯỚC (KHÔNG ĐƯỢC RETURN Ở ĐÂY)
+            const containerRef = React.useRef(null);
+            const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+            useEffect(() => {
+                if (!containerRef.current) return;
+                const resizeObserver = new ResizeObserver(entries => {
+                    for (let entry of entries) {
+                        setDimensions({
+                            width: entry.contentRect.width,
+                            height: entry.contentRect.height
+                        });
+                    }
+                });
+                resizeObserver.observe(containerRef.current);
+                return () => resizeObserver.disconnect();
+            }, []);
+
+            // Tính toán các biến số (Vẫn tính toán dù width = 0 để Hook bên dưới có dữ liệu)
+            const isMobile = dimensions.width < 768;
+            const columnCount = isMobile ? 1 : 5; 
+            // Nếu width = 0 thì itemWidth = 0, không sao cả
+            const itemWidth = Math.floor(dimensions.width / columnCount);
+            const imageRatio = 5 / 4; 
+            const footerHeight = 60; 
+            const itemHeight = (itemWidth * imageRatio) + footerHeight; 
+            const rowCount = Math.ceil(photos.length / columnCount);
+
+            // 2. GỌI CÁC HOOK USEMEMO/USECALLBACK (BẮT BUỘC PHẢI GỌI TRƯỚC KHI RETURN)
+            const itemData = useMemo(() => ({
+                photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth
+            }), [photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth]);
+
+            const Cell = useCallback(({ columnIndex, rowIndex, style, data }) => {
+                const idx = rowIndex * data.columnCount + columnIndex;
+                if (idx >= data.photos.length) return null;
+                
+                const photo = data.photos[idx];
+                const gap = 8; 
+                
+                const itemStyle = {
+                    ...style,
+                    width: style.width - gap,
+                    height: style.height - gap,
+                    left: style.left + (gap / 2),
+                    top: style.top + (gap / 2)
+                };
+
+                return (
+                    <div style={itemStyle}>
+                        <PhotoCard 
+                            photo={photo} 
+                            viewMode={data.viewMode} 
+                            onToggleSelect={data.onToggleSelect} 
+                            onUpdateComment={data.onUpdateComment} 
+                            onOpenView={data.onOpenView} 
+                            allowComments={data.allowComments} 
+                        />
+                    </div>
+                );
+            }, []);
+
+            // 3. BÂY GIỜ MỚI ĐƯỢC PHÉP KIỂM TRA VÀ RETURN SỚM
+            // Nếu chưa đo được kích thước, hiển thị div rỗng để ResizeObserver đo
+            if (dimensions.width === 0) {
+                return <div ref={containerRef} className="w-full h-full" />;
+            }
+
+            // 4. RENDER CHÍNH THỨC
+            return (
+                <div ref={containerRef} className="w-full h-full">
+                    <SimpleFixedSizeGrid
+                        className="ios-scroll-fix"
+                        columnCount={columnCount}
+                        columnWidth={itemWidth}
+                        height={dimensions.height}
+                        rowCount={rowCount}
+                        rowHeight={itemHeight}
+                        width={dimensions.width}
+                        itemData={itemData}
+                        overscanRowCount={2}
+                    >
+                        {Cell}
+                    </SimpleFixedSizeGrid>      
+                </div>
+            );
+        });
+
         // Trang chủ để người dùng chọn tạo hoặc truy cập album
         const AlbumEntryPage = () => {
             const [albumName, setAlbumName] = useState('');
@@ -434,18 +741,18 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             };
 
             return (
-                <div className="flex items-center justify-center h-screen">
-                    <div className="bg-gray-900 border border-gray-700 p-8 rounded-2xl max-w-md w-full shadow-2xl">
+                <div className="flex items-center justify-center h-screen bg-gray-50">
+                    <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-md w-full shadow-xl">
                         <div className="flex justify-center mb-6 text-pink-500">
                             <Icon name="camera" size={40} />
                         </div>
-                        <h1 className="text-2xl font-bold text-center mb-2">LensFlow Proofing</h1>
-                        <p className="text-sm text-gray-400 text-center mb-8">Client Proofing & Selection</p>
+                        <h1 className="text-2xl font-bold text-center mb-2 text-gray-900">LensFlow Proofing</h1>
+                        <p className="text-sm text-gray-500 text-center mb-8">Client Proofing & Selection</p>
 
                         <form onSubmit={handleSubmit}>
-                            <label className="text-sm font-medium text-gray-300 mb-2 block">Tên Album</label>
-                            <input type="text" value={albumName} onChange={e => setAlbumName(e.target.value)} autoFocus placeholder="Nhập tên để tạo hoặc truy cập..." className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4" />
-                            <button type="submit" disabled={!albumName.trim()} className="w-full py-3 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-bold disabled:opacity-50">Tiếp tục</button>
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">Tên Album</label>
+                            <input type="text" value={albumName} onChange={e => setAlbumName(e.target.value)} autoFocus placeholder="Nhập tên để tạo hoặc truy cập..." className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4 placeholder-gray-400" />
+                            <button type="submit" disabled={!albumName.trim()} className="w-full py-3 rounded-lg bg-pink-500 hover:bg-pink-400 text-white font-bold disabled:opacity-50 shadow-lg shadow-pink-500/20">Tiếp tục</button>
                         </form>
                     </div>
                 </div>
@@ -488,6 +795,15 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             const [isLoading, setIsLoading] = useState(true); // Trạng thái mới: Mặc định là đang tải dữ liệu Firebase config
             const [showAdminPanel, setShowAdminPanel] = useState(false); // State cho Admin Panel trên mobile
             
+            const showToast = useCallback((message, type = 'success') => {
+                setNotification({ message, type });
+                setTimeout(() => setNotification(null), 3000);
+            }, []);
+
+            const logActivity = (type, details, metadata = {}) => {
+                console.log(`[${viewMode}] ${type}:`, details, metadata);
+            };
+
 // --- FIREBASE: LISTENER CHÍNH (Đã sửa lỗi không hiển thị Passcode) ---
 useEffect(() => {
     if (!albumKey) return;
@@ -619,38 +935,44 @@ useEffect(() => {
             }, [driveFolders, driveApiKey, adminPassword, allowComments, saveConfigToFirebase]);
 
 
-            const showToast = useCallback((message, type = 'success') => {
-                setNotification({ message, type });
-                setTimeout(() => setNotification(null), 3000);
-            }, []);
-
-            const logActivity = (type, details, metadata = {}) => {
-                console.log(`[${viewMode}] ${type}:`, details, metadata);
-            };
-
             // --- CÁC HÀM CẬP NHẬT TRẠNG THÁI (Ghi tối ưu) ---
-            const toggleSelect = (id) => {
-                const currentPhoto = photos.find(p => p.id === id);
-                if (!currentPhoto) return;
-                const newState = !currentPhoto.isSelected;
-                
-                setPhotos(photos.map(p => p.id === id ? { ...p, isSelected: newState } : p));
-                
-                const photoRef = db.ref(`albums/${albumKey}/current_status/photos/${id}`);
-                photoRef.update({ isSelected: newState })
-                    .then(() => logActivity(newState ? 'SELECT_PHOTO' : 'UNSELECT_PHOTO', `Ảnh ${id} đồng bộ thành công`))
-                    .catch(error => showToast(`Lỗi đồng bộ: ${error.message}`, 'error'));
-            };
+            // FIX: Wrapped in useCallback and used functional updates to maintain stability and performance
+            const toggleSelect = useCallback((id) => {
+                setPhotos(prevPhotos => {
+                    const index = prevPhotos.findIndex(p => p.id === id);
+                    if (index === -1) return prevPhotos;
+                    
+                    const p = prevPhotos[index];
+                    const newState = !p.isSelected;
+                    
+                    // Fire and forget sync
+                    db.ref(`albums/${albumKey}/current_status/photos/${id}`)
+                        .update({ isSelected: newState })
+                        .catch(console.error);
+                    
+                    const newPhotos = [...prevPhotos];
+                    newPhotos[index] = { ...p, isSelected: newState };
+                    return newPhotos;
+                });
+            }, [albumKey]);
 
-            const updateComment = (id, comment) => {
-                const photoRef = db.ref(`albums/${albumKey}/current_status/photos/${id}`);
-                
-                setPhotos(photos.map(p => p.id === id ? { ...p, comments: comment } : p));
-                
-                photoRef.update({ comments: comment })
-                    .then(() => logActivity('ADD_COMMENT', `Ghi chú ảnh ${id} đồng bộ thành công`))
-                    .catch(error => showToast(`Lỗi đồng bộ: ${error.message}`, 'error'));
-            };
+            // FIX: Wrapped in useCallback and used functional updates
+            const updateComment = useCallback((id, comment) => {
+                // Fire and forget sync (Local state is already handled by PhotoCard via onBlur/onChange)
+                // Here we update the main list source of truth
+                setPhotos(prevPhotos => {
+                    const index = prevPhotos.findIndex(p => p.id === id);
+                    if (index === -1) return prevPhotos;
+                    
+                    const newPhotos = [...prevPhotos];
+                    newPhotos[index] = { ...prevPhotos[index], comments: comment };
+                    return newPhotos;
+                });
+
+                db.ref(`albums/${albumKey}/current_status/photos/${id}`)
+                    .update({ comments: comment })
+                    .catch(console.error);
+            }, [albumKey]);
             
             const handleFileUpload = async (e) => {
                 const files = e.target.files;
@@ -792,8 +1114,10 @@ useEffect(() => {
                             const existing = existingMap.get(f.id);
                             return {
                                 id: f.id,
-                                url: `https://drive.google.com/thumbnail?id=${f.id}&sz=w500`,
-                                lightboxUrl: `https://drive.google.com/thumbnail?id=${f.id}&sz=w2000`,
+                                // Sửa w500 -> w300 để nhẹ hơn
+                                url: `https://drive.google.com/thumbnail?id=${f.id}&sz=w300`,
+                                // Sửa w2000 -> w1600 (vẫn nét nhưng đỡ tốn RAM hơn)
+                                lightboxUrl: `https://drive.google.com/thumbnail?id=${f.id}&sz=w1600`,
                                 originalUrl: `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${driveApiKey}`,
                                 name: f.name,
                                 folderName: f.folderName, 
@@ -1164,21 +1488,21 @@ const handlePasscodeAccess = async (inputPasscode) => {
             }, []);
 
             return (
-                <div className="flex h-screen bg-gray-950 text-gray-100">
+                <div className="flex h-screen bg-gray-50 text-gray-900">
                     {notification && (
                         <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 border ${
-                        notification.type === 'success' ? 'bg-green-900/90 border-green-500' : 
-                        notification.type === 'error' ? 'bg-red-900/90 border-red-500' : 
-                        'bg-yellow-900/90 border-yellow-500'
+                        notification.type === 'success' ? 'bg-green-50 border-green-500 text-green-700' : 
+                        notification.type === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 
+                        'bg-yellow-50 border-yellow-500 text-yellow-700'
                         }`}>
                             {notification.type === 'success' ? <Icon name="check" size={18} /> : <Icon name="alert" size={18} />}
                             <span className="text-sm font-medium">{notification.message}</span>
                         </div>
                     )}
                     {isLoading && (
-                      <div className="fixed inset-0 z-[110] bg-gray-950 flex items-center justify-center text-pink-500">
+                      <div className="fixed inset-0 z-[110] bg-gray-50 flex items-center justify-center text-pink-500">
                           <Icon name="loader" size={40} />
-                          <span className="ml-3 text-lg text-gray-400">Đang tải cấu hình...</span>
+                          <span className="ml-3 text-lg text-gray-500">Đang tải cấu hình...</span>
                       </div>
                     )}
 {showPasscodeModal && !isLoading && (
@@ -1193,17 +1517,17 @@ const handlePasscodeAccess = async (inputPasscode) => {
  
 
                     {showLoginModal && (
-                        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-                            <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl max-w-sm w-full">
+                        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                            <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-sm w-full shadow-xl">
                                 <div className="flex justify-center mb-6 text-pink-500">
                                     <Icon name="lock" size={48} />
                                 </div>
-                                <h2 className="text-xl font-bold text-center mb-4">Quản trị viên</h2>
-                                <input type="password" autoFocus value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} placeholder="Mật khẩu..." className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4" />
-                                {loginError && <p className="text-red-400 text-xs text-center mb-4">Sai mật khẩu</p>}
+                                <h2 className="text-xl font-bold text-center mb-4 text-gray-900">Quản trị viên</h2>
+                                <input type="password" autoFocus value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} placeholder="Mật khẩu..." className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4" />
+                                {loginError && <p className="text-red-500 text-xs text-center mb-4">Sai mật khẩu</p>}
                                 <div className="flex gap-3">
-                                    <button onClick={() => setShowLoginModal(false)} className="flex-1 py-2 rounded-lg border border-gray-700 hover:bg-gray-800">Hủy</button>
-                                    <button onClick={handleLogin} className="flex-1 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-bold">Đăng nhập</button>
+                                    <button onClick={() => setShowLoginModal(false)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100">Hủy</button>
+                                    <button onClick={handleLogin} className="flex-1 py-2 rounded-lg bg-pink-500 hover:bg-pink-400 text-white font-bold shadow-lg shadow-pink-500/20">Đăng nhập</button>
                                 </div>
                             </div>
                         </div>
@@ -1211,26 +1535,26 @@ const handlePasscodeAccess = async (inputPasscode) => {
 
                     {/* Progress Modal (Giữ nguyên) */}
                     {isMovingFiles && moveProgress.total > 0 && (
-                        <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4">
-                            <div className="bg-gray-900 border border-gray-700 p-8 rounded-2xl max-w-md w-full">
+                        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+                            <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-md w-full shadow-xl">
                                 <div className="flex justify-center mb-4 text-green-500">
                                     <Icon name="loader" size={48} />
                                 </div>
-                                <h2 className="text-lg font-bold text-center mb-6">Đang lưu ảnh gốc...</h2>
+                                <h2 className="text-lg font-bold text-center mb-6 text-gray-900">Đang lưu ảnh gốc...</h2>
                                 
                                 <div className="mb-4">
                                     <div className="flex justify-between text-sm mb-2">
-                                        <span className="text-gray-400">Tiến trình:</span>
-                                        <span className="text-green-400 font-bold">{moveProgress.current}/{moveProgress.total}</span>
+                                        <span className="text-gray-500">Tiến trình:</span>
+                                        <span className="text-green-600 font-bold">{moveProgress.current}/{moveProgress.total}</span>
                                     </div>
-                                    <div className="w-full bg-gray-800 rounded-full h-1.5">
+                                    <div className="w-full bg-gray-100 rounded-full h-1.5">
                                         <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-full transition-all duration-300" style={{width: `${(moveProgress.current / moveProgress.total) * 100}%`}}></div>
                                     </div>
                                 </div>
                                 
-                                <div className="bg-gray-950 p-3 rounded-lg border border-gray-800">
+                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                                     <p className="text-xs text-gray-400 mb-1">Đang xử lý:</p>
-                                    <p className="text-sm text-white truncate font-mono">{moveProgress.fileName}</p>
+                                    <p className="text-sm text-gray-800 truncate font-mono">{moveProgress.fileName}</p>
                                 </div>
                                 
                                 <p className="text-xs text-center text-gray-500 mt-4">
@@ -1245,82 +1569,82 @@ const handlePasscodeAccess = async (inputPasscode) => {
                         {/* Lớp phủ mờ cho Admin Panel trên mobile */}
                         {showAdminPanel && viewMode === 'PHOTOGRAPHER' && (
                             <div 
-                                className="fixed inset-0 bg-black/60 z-30 md:hidden"
+                                className="fixed inset-0 bg-black/20 z-30 md:hidden"
                                 onClick={() => setShowAdminPanel(false)}
                             ></div>
                         )}
 
                         {/* Admin Panel */}
-                        <div className={`fixed md:relative top-0 left-0 h-full z-40 md:z-auto transition-transform duration-300 ease-in-out bg-gray-900 border-r border-gray-800 overflow-hidden ${
+                        <div className={`fixed md:relative top-0 left-0 h-full z-40 md:z-auto transition-transform duration-300 ease-in-out bg-white border-r border-gray-200 overflow-hidden ${
                             viewMode === 'PHOTOGRAPHER' ? 'w-80' : 'w-0'
-                        } ${showAdminPanel ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+                        } ${showAdminPanel ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 shadow-xl md:shadow-none`}>
                             <div className="p-6 overflow-y-auto h-full">
                                 <div className="flex items-center justify-between gap-2 text-pink-500 mb-8">
                                     <Icon name="camera" size={28} />
-                                    <span className="font-bold text-xl">Admin Panel</span>
-                                    <button onClick={() => setShowAdminPanel(false)} className="md:hidden p-2 text-gray-400 hover:text-white"><Icon name="x" size={20} /></button>
+                                    <span className="font-bold text-xl text-gray-900">Admin Panel</span>
+                                    <button onClick={() => setShowAdminPanel(false)} className="md:hidden p-2 text-gray-400 hover:text-gray-600"><Icon name="x" size={20} /></button>
                                 </div>
                                 
                                 <div className="mb-6">
-                                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2">
                                         <Icon name="settings" size={12} /> Cài đặt
                                     </h3>
-                                    <input type="text" value={albumName} onChange={(e) => setAlbumName(e.target.value)} placeholder="Tên Album" className="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-sm mb-3 focus:border-pink-500 outline-none"/>
+                                    <input type="text" value={albumName} onChange={(e) => setAlbumName(e.target.value)} placeholder="Tên Album" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded px-3 py-2 text-sm mb-3 focus:border-pink-500 outline-none"/>
                                     
-                                    <div className="flex items-center justify-between bg-gray-950 p-3 rounded-lg border border-gray-800">
-                                        <div className="flex items-center gap-2 text-sm">
-                                            {allowComments ? <Icon name="messageOn" size={16} className="text-green-400" /> : <Icon name="messageOff" size={16} className="text-red-400" />}
+                                    <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                                            {allowComments ? <Icon name="messageOn" size={16} className="text-green-500" /> : <Icon name="messageOff" size={16} className="text-red-400" />}
                                             <span>Bình luận</span>
                                         </div>
-                                        <button onClick={() => setAllowComments(!allowComments)} className={`w-10 h-5 rounded-full relative ${allowComments ? 'bg-green-500' : 'bg-gray-700'}`}>
-                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${allowComments ? 'left-6' : 'left-1'}`} />
+                                        <button onClick={() => setAllowComments(!allowComments)} className={`w-10 h-5 rounded-full relative ${allowComments ? 'bg-green-500' : 'bg-gray-300'}`}>
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all shadow-sm ${allowComments ? 'left-6' : 'left-1'}`} />
                                         </button>
                                     </div>
-                                    <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="Admin Password" className="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-sm mt-3 focus:border-pink-500 outline-none"/>
+                                    <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="Admin Password" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded px-3 py-2 text-sm mt-3 focus:border-pink-500 outline-none"/>
                                 </div>
 
                                 <div className="mb-6">
-                                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2">
                                         <Icon name="cloud" size={12} /> Google Drive Folders
                                     </h3>
-                                    <input type="password" value={driveApiKey} onChange={(e) => setDriveApiKey(e.target.value)} placeholder="API Key" className="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-xs mb-3 focus:border-pink-500 outline-none"/>
+                                    <input type="password" value={driveApiKey} onChange={(e) => setDriveApiKey(e.target.value)} placeholder="API Key" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded px-3 py-2 text-xs mb-3 focus:border-pink-500 outline-none"/>
                                     
                                     <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
                                         {driveFolders.map((folder, idx) => (
-                                            <div key={idx} className="flex gap-2 items-center bg-gray-800/50 p-2 rounded border border-gray-700">
+                                            <div key={idx} className="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
                                                 <input type="text" value={folder.name} onChange={(e) => {
                                                     const newFolders = [...driveFolders];
                                                     newFolders[idx].name = e.target.value;
                                                     setDriveFolders(newFolders);
-                                                }} placeholder="Tên" className="w-20 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs focus:border-pink-500 outline-none"/>
+                                                }} placeholder="Tên" className="w-20 bg-white border border-gray-200 rounded px-2 py-1 text-xs focus:border-pink-500 outline-none text-gray-800"/>
                                                 <input type="text" value={folder.id} onChange={(e) => {
                                                     const newFolders = [...driveFolders];
                                                     newFolders[idx].id = e.target.value;
                                                     setDriveFolders(newFolders);
-                                                }} placeholder="Folder ID" className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs focus:border-pink-500 outline-none"/>
-                                                <button onClick={() => setDriveFolders(driveFolders.filter((_, i) => i !== idx))} className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded">
+                                                }} placeholder="Folder ID" className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-xs focus:border-pink-500 outline-none text-gray-800"/>
+                                                <button onClick={() => setDriveFolders(driveFolders.filter((_, i) => i !== idx))} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded">
                                                     <Icon name="x" size={12} />
                                                 </button>
                                             </div>
                                         ))}
                                     </div>
                                     
-                                    <button onClick={() => setDriveFolders([...driveFolders, {name: '', id: ''}])} className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs mb-3 flex items-center justify-center gap-1">
+                                    <button onClick={() => setDriveFolders([...driveFolders, {name: '', id: ''}])} className="w-full py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs mb-3 flex items-center justify-center gap-1 transition-colors">
                                         <span className="text-lg leading-none">+</span> Thêm folder
                                     </button>
                                     
                                     {driveFolders.length > 0 && (
-                                        <button onClick={syncAllFolders} disabled={isSyncingDrive} className="w-full py-2 bg-gradient-to-r from-pink-500/20 to-purple-500/20 hover:from-pink-500/30 hover:to-purple-500/30 text-pink-400 border border-pink-500/30 rounded-lg text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-50 mb-3">
+                                        <button onClick={syncAllFolders} disabled={isSyncingDrive} className="w-full py-2 bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200 rounded-lg text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-50 mb-3 transition-colors">
                                             {isSyncingDrive ? <><Icon name="loader" size={14} /> Đang sync...</> : <><Icon name="refresh" size={14} /> Sync Tất Cả ({driveFolders.filter(f => f.id).length})</>}
                                         </button>
                                     )}
                                     
                                     {isSyncingDrive && syncProgress.total > 0 && (
-                                        <div className="bg-gray-900 p-2 rounded border border-gray-700 mb-3">
-                                            <div className="text-[10px] text-gray-400 mb-1">
+                                        <div className="bg-gray-50 p-2 rounded border border-gray-200 mb-3">
+                                            <div className="text-[10px] text-gray-500 mb-1">
                                                 {syncProgress.folderName} ({syncProgress.current}/{syncProgress.total})
                                             </div>
-                                            <div className="w-full bg-gray-800 rounded-full h-1.5">
+                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
                                                 <div className="bg-pink-500 h-full rounded-full transition-all" style={{width: `${(syncProgress.current / syncProgress.total) * 100}%`}}></div>
                                             </div>
                                         </div>
@@ -1328,11 +1652,11 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                     
                                     {driveFolders.length > 0 && (
                                         <div className="space-y-2">
-                                            <label className="text-[10px] text-gray-500 uppercase font-semibold">Xem trước:</label>
+                                            <label className="text-[10px] text-gray-400 uppercase font-semibold">Xem trước:</label>
                                             <select value={currentFolderId} onChange={(e) => {
                                                 const newFolderId = e.target.value;
                                                 setCurrentFolderId(newFolderId);
-                                            }} className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-2 text-xs focus:border-pink-500 outline-none">
+                                            }} className="w-full bg-gray-50 border border-gray-200 text-gray-800 rounded px-2 py-2 text-xs focus:border-pink-500 outline-none">
                                                 <option value="">Tất cả thư mục</option>
                                                 {driveFolders.map((folder, idx) => (
                                                     <option key={idx} value={folder.id}>{folder.name || `Folder ${idx + 1}`}</option>
@@ -1343,39 +1667,39 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                 </div>
 
                                 <div className="mb-6">
-                                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2">
                                         <Icon name="shield" size={12} /> Cloud Storage (Firebase)
                                     </h3>
-                                    <button onClick={handleSaveSnapshot} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1">
+                                    <button onClick={handleSaveSnapshot} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1 shadow-md shadow-blue-200">
                                         <Icon name="download" size={14} /> Save Snapshot
                                     </button>
                                     {/* Thêm giao diện để chọn và khôi phục Snapshot ở đây nếu cần */}
                                 </div>
 
                                 <div className="mb-6">
-                                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2">
                                         <Icon name="upload" size={12} /> Upload Local
                                     </h3>
-                                    <label className="flex flex-col items-center justify-center w-full h-16 border-2 border-gray-700 border-dashed rounded-xl hover:bg-gray-800 cursor-pointer group">
-                                        <Icon name="folder" size={24} className="text-gray-400 group-hover:text-pink-400 transition-colors" />
+                                    <label className="flex flex-col items-center justify-center w-full h-16 border-2 border-gray-300 border-dashed rounded-xl hover:bg-gray-50 hover:border-pink-300 cursor-pointer group transition-all">
+                                        <Icon name="folder" size={24} className="text-gray-400 group-hover:text-pink-500 transition-colors" />
                                         <span className="text-[10px] text-gray-500 mt-1">Chọn ảnh</span>
                                         <input type="file" className="hidden" multiple accept="image/*" onChange={handleFileUpload} />
                                     </label>
                                 </div>
 
-                                <div className="space-y-3 border-t border-gray-800 pt-6">
+                                <div className="space-y-3 border-t border-gray-100 pt-6">
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-400">Đã chọn:</span>
-                                        <span className="font-bold text-pink-400">{selectedCount} ảnh</span>
+                                        <span className="text-gray-500">Đã chọn:</span>
+                                        <span className="font-bold text-pink-500">{selectedCount} ảnh</span>
                                     </div>
-                                    <button onClick={() => setFilterMode(filterMode === 'ALL' ? 'SELECTED' : 'ALL')} className={`w-full py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-2 ${filterMode === 'SELECTED' ? 'bg-pink-600 text-white' : 'bg-gray-800 text-gray-300'}`}>
+                                    <button onClick={() => setFilterMode(filterMode === 'ALL' ? 'SELECTED' : 'ALL')} className={`w-full py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-2 ${filterMode === 'SELECTED' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
                                         {filterMode === 'SELECTED' ? <><Icon name="eye" size={14} /> Hiện tất cả</> : <><Icon name="filter" size={14} /> Xem ảnh chọn</>}
                                     </button>
                                     
-                                    <button onClick={handleDownloadReport} disabled={!selectedCount} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+                                    <button onClick={handleDownloadReport} disabled={!selectedCount} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
                                         <Icon name="download" size={16} /> Xuất Order (.txt)
                                     </button>
-                                    <button onClick={handleMoveToFinal} disabled={isMovingFiles || !selectedCount} className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+                                    <button onClick={handleMoveToFinal} disabled={isMovingFiles || !selectedCount} className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-green-200">
                                         {isMovingFiles ? <><Icon name="loader" size={16} /> Đang lưu...</> : <><Icon name="folder" size={16} /> Lưu vào Folder</>}
                                     </button>
                                 </div>
@@ -1383,25 +1707,26 @@ const handlePasscodeAccess = async (inputPasscode) => {
                         </div>
 
                         <div className="flex-1 flex flex-col">
-                            <header className="h-16 border-b border-gray-800 flex items-center justify-between px-4 md:px-6 bg-gray-950/80 backdrop-blur-md">
+                            {/* OPTIMIZED HEADER: White background for light theme */}
+                            <header className="h-16 border-b border-gray-200 flex items-center justify-between px-4 md:px-6 bg-white shadow-sm z-10">
                                 <div className="flex items-center gap-2 md:gap-3">
                                     {/* Nút Hamburger cho Admin Panel trên mobile */}
                                     {viewMode === 'PHOTOGRAPHER' && (
-                                        <button onClick={() => setShowAdminPanel(true)} className="md:hidden -ml-2 p-2 text-gray-400 hover:text-white">
+                                        <button onClick={() => setShowAdminPanel(true)} className="md:hidden -ml-2 p-2 text-gray-500 hover:text-gray-800">
                                             <Icon name="menu" size={24} />
                                         </button>
                                     )}
-                                    <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex-shrink-0 flex items-center justify-center">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex-shrink-0 flex items-center justify-center shadow-md shadow-pink-200">
                                         <Icon name="camera" size={18} stroke="white" />
                                     </div>
-                                    <h1 className="font-bold text-lg truncate max-w-[150px] md:max-w-none">{albumName}</h1>
+                                    <h1 className="font-bold text-lg truncate max-w-[150px] md:max-w-none text-gray-800">{albumName}</h1>
                                     
                                     {/* Folder selector cho KHÁCH */}
                                     <div className="hidden md:flex items-center gap-4">
                                         {viewMode === 'CLIENT' && driveFolders.length > 0 && (
                                             <select value={currentFolderId} onChange={(e) => {
                                                 setCurrentFolderId(e.target.value);
-                                            }} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:border-pink-500 outline-none max-w-[120px] md:max-w-xs">
+                                            }} className="bg-gray-50 border border-gray-200 text-gray-700 rounded-lg px-3 py-1.5 text-sm focus:border-pink-500 outline-none max-w-[120px] md:max-w-xs cursor-pointer">
                                                 <option value="">Tất cả</option>
                                                 {driveFolders.map((folder, idx) => (
                                                     <option key={idx} value={folder.id}>{folder.name}</option>
@@ -1410,17 +1735,17 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                         )}
                                         {/* Bộ đếm số ảnh đã chọn */}
                                         {viewMode === 'CLIENT' && viewStats.total > 0 && (
-                                            <div className="flex items-center gap-2 bg-gray-800/50 border border-gray-700/80 px-3 py-1.5 rounded-lg">
-                                                <span className="font-bold text-pink-400">{viewStats.selected}</span>
+                                            <div className="flex items-center gap-2 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg">
+                                                <span className="font-bold text-pink-500">{viewStats.selected}</span>
                                                 <Icon name="heart" size={14} className="text-pink-500" fill="currentColor" />
-                                                <span className="text-gray-500">/</span>
-                                                <span className="text-gray-400">{viewStats.total}</span>
+                                                <span className="text-gray-400">/</span>
+                                                <span className="text-gray-500">{viewStats.total}</span>
                                             </div>
                                         )}
                                     </div>
                                     
                                     {lastSaveTime && (
-                                        <span className="hidden md:flex text-[10px] text-green-400 items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full" title="Tự động đồng bộ lên Firebase">
+                                        <span className="hidden md:flex text-[10px] text-green-600 items-center gap-1 bg-green-50 px-2 py-1 rounded-full" title="Tự động đồng bộ lên Firebase">
                                             <Icon name="checkCircle" size={10} /> Sync: {lastSaveTime.toLocaleTimeString('vi-VN')}
                                         </span>
                                     )}
@@ -1439,7 +1764,7 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                         } else {
                                             setShowLoginModal(true);
                                         }
-                                    }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${viewMode === 'PHOTOGRAPHER' ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
+                                    }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === 'PHOTOGRAPHER' ? 'bg-red-50 text-red-500 border border-red-100 hover:bg-red-100' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>
                                         {viewMode === 'PHOTOGRAPHER' ? <><Icon name="logOut" size={16} /> Exit</> : <><Icon name="lock" size={16} /> Admin</>}
                                     </button>
                                 </div>
@@ -1447,9 +1772,9 @@ const handlePasscodeAccess = async (inputPasscode) => {
 
                             {/* Thanh bộ lọc cho mobile */}
                             {viewMode === 'CLIENT' && (
-                                <div className="md:hidden flex items-center gap-2 p-2 border-b border-gray-800">
+                                <div className="md:hidden flex items-center gap-2 p-2 border-b border-gray-200 bg-white">
                                     {driveFolders.length > 0 && (
-                                        <select value={currentFolderId} onChange={(e) => setCurrentFolderId(e.target.value)} className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none">
+                                        <select value={currentFolderId} onChange={(e) => setCurrentFolderId(e.target.value)} className="flex-1 bg-gray-50 border border-gray-200 text-gray-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none">
                                             <option value="">Tất cả thư mục</option>
                                             {driveFolders.map((folder, idx) => (
                                                 <option key={idx} value={folder.id}>{folder.name}</option>
@@ -1457,35 +1782,31 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                         </select>
                                     )}
                                     {viewStats.total > 0 && (
-                                        <div className="flex items-center justify-center gap-2 bg-gray-800/50 border border-gray-700/80 px-3 py-2 rounded-lg">
-                                            <span className="font-bold text-pink-400">{viewStats.selected}</span>
+                                        <div className="flex items-center justify-center gap-2 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
+                                            <span className="font-bold text-pink-500">{viewStats.selected}</span>
                                             <Icon name="heart" size={14} className="text-pink-500" fill="currentColor" />
-                                            <span className="text-gray-500">/</span>
-                                            <span className="text-gray-400">{viewStats.total}</span>
+                                            <span className="text-gray-400">/</span>
+                                            <span className="text-gray-600">{viewStats.total}</span>
                                         </div>
                                     )}
                                 </div>
                             )}
 
-                            <main className="flex-1 overflow-y-auto overflow-x-hidden md:p-8">
+                            <main className="flex-1 overflow-hidden relative md:p-4 bg-gray-50">
                                 {!photos.length ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-50">
+                                    <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
                                         <Icon name="grid" size={64} strokeWidth={1} className="mb-4" />
                                         <p className="text-lg font-light">Chưa có ảnh nào</p>
                                     </div>
                                 ) : (
-                                    // Thay đổi layout dựa trên viewMode và kích thước màn hình
-                                    <div className={
-                                        viewMode === 'CLIENT' 
-                                        ? "flex flex-col md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 md:gap-4 lg:gap-6 pb-20" 
-                                        : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4 lg:gap-6 pb-20"
-                                    }>
-                                        {filteredPhotos.map((photo, index) => (
-                                            <div key={photo.id}>
-                                                <PhotoCard photo={photo} viewMode={viewMode} onToggleSelect={toggleSelect} onUpdateComment={updateComment} onOpenView={setSelectedPhoto} allowComments={allowComments} />
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <VirtualPhotoGrid
+                                        photos={filteredPhotos}
+                                        viewMode={viewMode}
+                                        onToggleSelect={toggleSelect}
+                                        onUpdateComment={updateComment}
+                                        onOpenView={handlePhotoChange}
+                                        allowComments={allowComments}
+                                    />
                                 )}
                             </main>
 
