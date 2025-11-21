@@ -406,9 +406,6 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 if (scale > 1) {
                     setIsDragging(false);
                 } else {
-                    if (Math.abs(swipeOffset) < 5) {
-                        setShowUI(prev => !prev); 
-                    }
                     if (!isSwiping) return;
                     setIsSwiping(false);
                     const minSwipeDistance = 15; 
