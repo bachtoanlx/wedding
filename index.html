@@ -519,6 +519,8 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     </div>
 
                     <button 
+						onTouchStart={(e) => e.stopPropagation()}
+						onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => { e.stopPropagation(); onToggleSelect(currentPhoto.id); }} 
                         className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 flex items-center gap-2 shadow-xl duration-300 ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} md:translate-y-0 md:opacity-100 md:pointer-events-auto ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
                     >
