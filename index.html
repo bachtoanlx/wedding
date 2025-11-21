@@ -811,131 +811,167 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 			const cancelDownloadRef = React.useRef(false);
 			// [CẬP NHẬT] Hàm xử lý Download (Fix lỗi chặn Pop-up + Logic lọc thông minh)
 // [FIX FINAL] Hàm tải file: Giữ kết nối Iframe để đảm bảo file về máy
-// [FIX FINAL: SUPER VIP] Tải & Nén ZIP (Giải quyết vấn đề 1000 clicks)
-            const handleSmartDownload = async (type) => {
-                setShowDownloadMenu(false); 
-                cancelDownloadRef.current = false;
+// [NÂNG CẤP] Hàm tải ảnh thông minh: Hỗ trợ Folder con + Auto ZIP
+const handleSmartDownload = async (type) => {
+    setShowDownloadMenu(false);
+    cancelDownloadRef.current = false;
 
-                let filesToDownload = [];
+    // 1. LỌC DANH SÁCH ẢNH CẦN TẢI
+    let filesToDownload = [];
+    let modeDescription = "";
 
-                // --- 1. LOGIC LỌC ẢNH ---
-                if (type === 'SELECTED') {
-                    let selectedSource = photos.filter(p => p.isSelected);
-                    if (currentFolderId) {
-                        const currentFolder = driveFolders.find(f => f.id === currentFolderId);
-                        if (currentFolder) {
-                            filesToDownload = selectedSource.filter(p => p.folderName === currentFolder.name);
-                        }
-                    } else {
-                        filesToDownload = selectedSource;
-                    }
+    // Logic lọc ảnh (giữ nguyên logic lọc thông minh của bạn)
+    if (type === 'SELECTED') {
+        let selectedSource = photos.filter(p => p.isSelected);
+        if (currentFolderId) {
+            const currentFolder = driveFolders.find(f => f.id === currentFolderId);
+            if (currentFolder) {
+                filesToDownload = selectedSource.filter(p => p.folderName === currentFolder.name);
+                modeDescription = `đã chọn trong mục ${currentFolder.name}`;
+            }
+        } else {
+            filesToDownload = selectedSource;
+            modeDescription = "đã chọn (toàn bộ album)";
+        }
+    } else if (type === 'ALL') {
+        if (currentFolderId) {
+            const currentFolder = driveFolders.find(f => f.id === currentFolderId);
+            if (currentFolder) {
+                filesToDownload = photos.filter(p => p.folderName === currentFolder.name);
+                modeDescription = `tất cả trong mục ${currentFolder.name}`;
+            }
+        } else {
+            filesToDownload = photos;
+            modeDescription = "toàn bộ Album";
+        }
+    }
 
-                    if (filesToDownload.length === 0) {
-                        const contextName = currentFolderId ? "thư mục này" : "album";
-                        showToast(`Bạn chưa chọn ảnh nào trong ${contextName}!`, "warning");
-                        return;
-                    }
-                } 
-                else if (type === 'ALL') {
-                    if (currentFolderId) {
-                        const currentFolder = driveFolders.find(f => f.id === currentFolderId);
-                        if (currentFolder) {
-                            filesToDownload = photos.filter(p => p.folderName === currentFolder.name);
-                        }
-                    } else {
-                        filesToDownload = photos;
-                    }
-                }
+    if (filesToDownload.length === 0) {
+        showToast(`Không tìm thấy ảnh ${type === 'SELECTED' ? 'đã chọn' : ''} nào!`, "warning");
+        return;
+    }
 
-                if (filesToDownload.length === 0) {
-                    showToast("Không có ảnh nào để tải!", "warning");
-                    return;
-                }
+    // Xác nhận với người dùng
+    if (!window.confirm(`Bạn sắp tải xuống ${filesToDownload.length} ảnh (${modeDescription}).\n\nQuá trình này sẽ lấy ảnh gốc chất lượng cao nhất, vui lòng chờ đợi.`)) return;
 
-                // Thông báo chuyên nghiệp
-                const batchSize = 50; // Số lượng ảnh mỗi file ZIP (Để tránh tràn RAM điện thoại)
-                const totalBatches = Math.ceil(filesToDownload.length / batchSize);
+    setIsMovingFiles(true);
+    setMoveProgress({ current: 0, total: filesToDownload.length, fileName: 'Đang khởi tạo...' });
+
+    // 2. HÀM HỖ TRỢ: LẤY BLOB TỪ URL (Xử lý CORS & Fallback)
+    const fetchImageBlob = async (photo) => {
+        try {
+            // Ưu tiên 1: File gốc local (nếu vừa upload xong)
+            if (photo.originalFile) return photo.originalFile;
+
+            // Ưu tiên 2: Link gốc Google Drive (Dùng API Key để tải binary)
+            // Lưu ý: Cần đảm bảo API Key có quyền truy cập
+            let targetUrl = photo.originalUrl; 
+            if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) {
+                 targetUrl += `&key=${driveApiKey}`; // Bổ sung key nếu thiếu
+            }
+            
+            // Thử tải file gốc
+            let response = await fetch(targetUrl);
+            if (!response.ok) throw new Error('Link gốc lỗi');
+            return await response.blob();
+
+        } catch (e) {
+            console.warn(`Không tải được gốc ${photo.name}, thử tải preview...`);
+            // Ưu tiên 3: Fallback sang link hiển thị (thường là thumbnail lớn)
+            // Proxy qua cors-anywhere nếu cần, hoặc dùng trực tiếp nếu cùng domain
+            const response = await fetch(photo.url);
+            return await response.blob();
+        }
+    };
+
+    // 3. XỬ LÝ TẢI VỀ (CHIA 2 TRƯỜNG HỢP)
+    try {
+        // TRƯỜNG HỢP A: TRÌNH DUYỆT HIỆN ĐẠI (Chrome/Edge Desktop) - LƯU TRỰC TIẾP VÀO FOLDER
+        if ('showDirectoryPicker' in window) {
+            const rootHandle = await window.showDirectoryPicker();
+            let successCount = 0;
+            let failCount = 0;
+
+            for (let i = 0; i < filesToDownload.length; i++) {
+                if (cancelDownloadRef.current) break;
+                const photo = filesToDownload[i];
                 
-                const confirmMsg = `Sắp tải ${filesToDownload.length} ảnh.\n\nHệ thống sẽ nén thành ${totalBatches} file ZIP để tải nhanh và không lỗi.\n\nBạn có muốn tiếp tục?`;
+                // Cập nhật thanh tiến trình
+                setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: photo.name });
 
-                if (!window.confirm(confirmMsg)) return;
+                try {
+                    // a. Tải dữ liệu ảnh về bộ nhớ
+                    const blob = await fetchImageBlob(photo);
 
-                setIsMovingFiles(true);
-                
-                // --- 2. QUY TRÌNH TẢI & NÉN ZIP ---
-                let currentBatch = 1;
-                
-                while (filesToDownload.length > 0 && !cancelDownloadRef.current) {
-                    // Lấy ra 50 ảnh đầu tiên để nén
-                    const batchPhotos = filesToDownload.splice(0, batchSize);
-                    const zip = new JSZip();
-                    const folderName = `Album_Phan_${currentBatch}`;
-                    const folder = zip.folder(folderName);
-
-                    // Tải từng ảnh vào ZIP
-                    for (let i = 0; i < batchPhotos.length; i++) {
-                        if (cancelDownloadRef.current) break;
-
-                        const photo = batchPhotos[i];
-                        // Tính toán phần trăm tổng thể
-                        const progressBase = (currentBatch - 1) * batchSize;
-                        setMoveProgress({ 
-                            current: progressBase + i + 1, 
-                            total: progressBase + batchPhotos.length + filesToDownload.length, 
-                            fileName: `Đang nén: ${photo.name} (Gói ${currentBatch})` 
-                        });
-
-                        try {
-                            // Hack: Dùng link thumbnail kích thước lớn (w5000) để Bypass CORS & Tải nhanh hơn API
-                            // Link này cho phép fetch từ trình duyệt mà không bị chặn
-                            const downloadUrl = `https://drive.google.com/thumbnail?id=${photo.id}&sz=w5000`;
-                            
-                            const response = await fetch(downloadUrl);
-                            if (response.ok) {
-                                const blob = await response.blob();
-                                // Thêm file vào ZIP
-                                let fileName = photo.name;
-                                if (!fileName.toLowerCase().endsWith('.jpg')) fileName += '.jpg';
-                                folder.file(fileName, blob);
-                            }
-                        } catch (err) {
-                            console.error("Lỗi nén ảnh:", photo.name, err);
-                        }
-                    }
-
-                    if (cancelDownloadRef.current) break;
-
-                    // Tạo file ZIP và tải xuống
-                    setMoveProgress(prev => ({ ...prev, fileName: `Đang tạo file ZIP phần ${currentBatch}...` }));
+                    // b. Xác định thư mục con (Dựa trên folderName của ảnh)
+                    // Nếu không có folderName, cho vào thư mục gốc "Misc"
+                    const safeFolderName = (photo.folderName || "Khac").replace(/[^a-zA-Z0-9 \-_]/g, '');
                     
-                    try {
-                        const content = await zip.generateAsync({ type: "blob" });
-                        saveAs(content, `${albumName}_Phan${currentBatch}.zip`); // Dùng FileSaver để tải
-                        
-                        showToast(`✅ Đã tải xong phần ${currentBatch}/${totalBatches}`, "success");
-                        currentBatch++;
-                        
-                        // Nghỉ 1 chút để giải phóng RAM
-                        await new Promise(r => setTimeout(r, 1000)); 
-                    } catch (err) {
-                        console.error("Lỗi tạo ZIP:", err);
-                        showToast("Lỗi khi tạo file nén!", "error");
-                    }
-                }
+                    // c. Tạo hoặc lấy Handle của thư mục con
+                    const folderHandle = await rootHandle.getDirectoryHandle(safeFolderName, { create: true });
 
-                setIsMovingFiles(false);
-                
-                if (cancelDownloadRef.current) {
-                    showToast("Đã dừng tải!", "info");
-                } else {
-                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-                    if (isIOS) {
-                        showToast("🎉 Hoàn tất! Mở 'Tệp' (Files) để giải nén ZIP.", "success");
-                    } else {
-                        showToast("🎉 Hoàn tất! File ZIP đã lưu trong máy.", "success");
-                    }
+                    // d. Tạo file trong thư mục con đó
+                    const fileHandle = await folderHandle.getFileHandle(photo.name, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    
+                    successCount++;
+                } catch (err) {
+                    console.error(`Lỗi lưu ${photo.name}:`, err);
+                    failCount++;
                 }
-            };
+            }
+            
+            if (successCount > 0) {
+                showToast(`✅ Hoàn tất! Đã lưu ${successCount} ảnh vào máy tính.`, 'success');
+            }
+
+        } 
+        // TRƯỜNG HỢP B: TRÌNH DUYỆT KHÁC (Safari/Mobile) - DÙNG JSZIP (NÉN FILE)
+        else {
+            showToast("Đang nén ảnh để tải về (Chế độ tương thích)...", "info");
+            const zip = new JSZip();
+            let successCount = 0;
+
+            for (let i = 0; i < filesToDownload.length; i++) {
+                if (cancelDownloadRef.current) break;
+                const photo = filesToDownload[i];
+                setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: `Đang nén: ${photo.name}` });
+
+                try {
+                    const blob = await fetchImageBlob(photo);
+                    const safeFolderName = (photo.folderName || "Khac").replace(/[^a-zA-Z0-9 \-_]/g, '');
+                    
+                    // Thêm vào file ZIP theo cấu trúc folder
+                    zip.folder(safeFolderName).file(photo.name, blob);
+                    successCount++;
+                } catch (err) {
+                    console.error(`Lỗi nén ${photo.name}:`, err);
+                }
+            }
+
+            if (successCount > 0 && !cancelDownloadRef.current) {
+                setMoveProgress({ current: 100, total: 100, fileName: 'Đang tạo file Zip cuối cùng...' });
+                
+                // Tạo file zip và tải xuống
+                const content = await zip.generateAsync({ type: "blob" });
+                const zipName = `${albumName.replace(/[^a-zA-Z0-9]/g, '_')}_Download.zip`;
+                saveAs(content, zipName); // Dùng thư viện FileSaver.js đã có sẵn
+                
+                showToast(`✅ Đã tải file nén (.zip) chứa ${successCount} ảnh!`, 'success');
+            }
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            console.error(err);
+            showToast("Có lỗi xảy ra: " + err.message, "error");
+        }
+    } finally {
+        setIsMovingFiles(false);
+        setMoveProgress({ current: 0, total: 0, fileName: '' });
+    }
+};
 		
 
             const [isInitialized, setIsInitialized] = useState(false); 
@@ -1879,48 +1915,74 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                         </button>
                                     )}
                                     {/* --- [MỚI] MENU DOWNLOAD --- */}
-                                <div className="relative z-50">
-                                    <button 
-                                        onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                                        className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg shadow-pink-200 transition-all active:scale-95"
-                                    >
-                                        <Icon name="camera" size={20} stroke="white" />
-                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm">
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-pink-600"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                        </div>
-                                    </button>
+                                {/* --- MENU DOWNLOAD MỚI --- */}
+                                    <div className="relative z-50">
+                                        <button
+                                            onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                                            className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg transition-all active:scale-95 ${showDownloadMenu ? 'bg-pink-600 text-white ring-2 ring-pink-300' : 'bg-gradient-to-br from-pink-500 to-purple-600 text-white shadow-pink-200'}`}
+                                        >
+                                            <Icon name="download" size={20} stroke="currentColor" />
+                                            {/* Huy hiệu số lượng ảnh đã chọn */}
+                                            {viewStats.selected > 0 && (
+                                                <div className="absolute -top-1 -right-1 bg-white text-pink-600 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-pink-100">
+                                                    {viewStats.selected > 9 ? '9+' : viewStats.selected}
+                                                </div>
+                                            )}
+                                        </button>
 
-                                    {showDownloadMenu && (
-                                        <>
-                                            <div className="fixed inset-0 z-40" onClick={() => setShowDownloadMenu(false)}></div>
-                                            <div className="absolute top-12 left-0 w-60 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-left">
-                                                <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tải về máy</p>
-                                                    <p className="text-xs font-bold text-pink-600 truncate">
-                                                        {currentFolderId ? (driveFolders.find(f => f.id === currentFolderId)?.name || "Thư mục này") : "Toàn bộ Album"}
-                                                    </p>
+                                        {showDownloadMenu && (
+                                            <>
+                                                <div className="fixed inset-0 z-40" onClick={() => setShowDownloadMenu(false)}></div>
+                                                <div className="absolute top-12 left-0 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-left">
+                                                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tải về máy (Original)</p>
+                                                        <p className="text-xs font-bold text-pink-600 truncate">
+                                                            Phạm vi: {currentFolderId ? (driveFolders.find(f => f.id === currentFolderId)?.name || "Thư mục hiện tại") : "Toàn bộ Album"}
+                                                        </p>
+                                                    </div>
+                                                    <div className="p-2 space-y-1">
+                                                        {/* NÚT 1: TẢI ẢNH ĐÃ CHỌN */}
+                                                        <button 
+                                                            onClick={() => handleSmartDownload('SELECTED')} 
+                                                            disabled={viewStats.selected === 0} 
+                                                            className="w-full text-left px-3 py-3 hover:bg-pink-50 rounded-lg flex items-center gap-3 transition-colors disabled:opacity-40 disabled:cursor-not-allowed group"
+                                                        >
+                                                            <div className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 group-disabled:bg-gray-100 group-disabled:text-gray-400 flex items-center justify-center flex-shrink-0">
+                                                                <Icon name="heart" size={18} fill="currentColor" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-gray-800 group-disabled:text-gray-500">Tải ảnh Đã chọn</p>
+                                                                <p className="text-[10px] text-gray-500">
+                                                                    {viewStats.selected} tấm {currentFolderId ? "(trong folder này)" : "(tổng cộng)"}
+                                                                </p>
+                                                            </div>
+                                                        </button>
+
+                                                        {/* NÚT 2: TẢI TẤT CẢ */}
+                                                        <button 
+                                                            onClick={() => handleSmartDownload('ALL')} 
+                                                            className="w-full text-left px-3 py-3 hover:bg-blue-50 rounded-lg flex items-center gap-3 transition-colors group"
+                                                        >
+                                                            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+                                                                <Icon name="folder" size={18} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-gray-800">Tải tất cả ảnh</p>
+                                                                <p className="text-[10px] text-gray-500">
+                                                                    {currentFolderId ? "Chỉ tải thư mục đang xem" : "Tải toàn bộ album (Chia folder)"}
+                                                                </p>
+                                                            </div>
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    <div className="bg-yellow-50 px-4 py-2 text-[10px] text-yellow-700 border-t border-yellow-100 flex gap-2">
+                                                    <Icon name="alert" size={12} />
+                                                    <span>PC: Lưu vào folder &bull; Mobile: Tải file Zip</span>
+                                                    </div>
                                                 </div>
-                                                <div className="p-1">
-                                                    {/* Dùng viewStats.selected để hiện đúng số lượng theo ngữ cảnh */}
-                                                    <button onClick={() => handleSmartDownload('SELECTED')} disabled={viewStats.selected === 0} className="w-full text-left px-3 py-3 hover:bg-pink-50 rounded-lg flex items-center gap-3 transition-colors disabled:opacity-50">
-                                                        <div className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center"><Icon name="checkCircle" size={16} /></div>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-gray-800">Ảnh đã chọn</p>
-                                                            <p className="text-[10px] text-gray-500">
-                                                                {viewStats.selected} tấm 
-                                                                {currentFolderId && viewStats.selected < selectedCount ? ` (Tổng: ${selectedCount})` : ''}
-                                                            </p>
-                                                        </div>
-                                                    </button>
-                                                    <button onClick={() => handleSmartDownload('ALL')} className="w-full text-left px-3 py-3 hover:bg-blue-50 rounded-lg flex items-center gap-3 transition-colors">
-                                                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center"><Icon name="download" size={16} /></div>
-                                                        <div><p className="text-sm font-bold text-gray-800">Tải danh sách này</p><p className="text-[10px] text-gray-500">{currentFolderId ? "Chỉ tải folder đang xem" : "Tải tất cả folder"}</p></div>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
+                                            </>
+                                        )}
+                                    </div>
                                     <h1 className="font-bold text-lg truncate max-w-[150px] md:max-w-none text-gray-800">{albumName}</h1>
                                     
                                     {/* Folder selector cho KHÁCH */}
