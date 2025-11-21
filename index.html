@@ -808,6 +808,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 			const cancelDownloadRef = React.useRef(false);
 			// [CẬP NHẬT] Hàm xử lý Download (Fix lỗi chặn Pop-up + Logic lọc thông minh)
 // [FIX FINAL] Hàm tải file: Giữ kết nối Iframe để đảm bảo file về máy
+// [FIX FINAL] Hàm tải file: Blob Download + Giữ kết nối lâu (Fix lỗi Android)
             const handleSmartDownload = async (type) => {
                 setShowDownloadMenu(false); 
                 cancelDownloadRef.current = false;
@@ -849,73 +850,88 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 }
 
                 // Thông báo rõ ràng
-                const confirmMsg = `Sắp tải ${filesToDownload.length} ảnh.\n\nQUAN TRỌNG:\n- Giữ màn hình sáng.\n- KHÔNG tắt trình duyệt cho đến khi hoàn tất.\n- Tốc độ sẽ chậm để đảm bảo file không bị lỗi.`;
+                const confirmMsg = `Sắp tải ${filesToDownload.length} ảnh về máy.\n\nLƯU Ý:\n- Hãy chọn "Cho phép" nếu trình duyệt hỏi quyền tải xuống.\n- Giữ màn hình sáng cho đến khi hoàn tất.`;
 
                 if (!window.confirm(confirmMsg)) return;
 
                 setIsMovingFiles(true);
                 setMoveProgress({ current: 0, total: filesToDownload.length, fileName: '' });
 
-                // Mảng chứa các iframe tạm thời
-                const tempIframes = [];
-
-                // --- 2. QUY TRÌNH TẢI (Safe Mode) ---
+                // --- 2. QUY TRÌNH TẢI (BLOB MODE) ---
                 for (let i = 0; i < filesToDownload.length; i++) {
                     if (cancelDownloadRef.current) {
-                        break; // Thoát vòng lặp để xuống phần dọn dẹp
+                        break; 
                     }
 
                     const photo = filesToDownload[i];
                     setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: photo.name });
                     
                     try {
-                        // Thêm tham số random thời gian để tránh trình duyệt cache link cũ
-                        const timestamp = new Date().getTime();
-                        const downloadUrl = `https://www.googleapis.com/drive/v3/files/${photo.id}?alt=media&key=${driveApiKey}&t=${timestamp}`;
+                        const downloadUrl = photo.originalUrl || photo.lightboxUrl || photo.url;
                         
-                        // Tạo Iframe và giữ lại trong DOM, không xóa ngay
-                        const iframe = document.createElement('iframe');
-                        iframe.style.display = 'none';
-                        iframe.src = downloadUrl;
-                        iframe.id = `download_frame_${i}`; // Đánh dấu để quản lý
-                        document.body.appendChild(iframe);
+                        // Bước A: Tải dữ liệu về RAM (Fetch)
+                        const response = await fetch(downloadUrl);
+                        if (!response.ok) throw new Error("Fetch failed");
                         
-                        // Đẩy vào mảng để dọn dẹp sau
-                        tempIframes.push(iframe);
+                        const blobData = await response.blob();
+                        
+                        // Bước B: Ép kiểu file ảnh JPEG để Android nhận diện
+                        const blob = new Blob([blobData], { type: 'image/jpeg' });
+                        const blobUrl = window.URL.createObjectURL(blob);
 
-                        // Tăng thời gian chờ lên 3s để đảm bảo kết nối đã thiết lập thành công
-                        // Mạng 4G ở VN đôi khi trễ (latency) cao
-                        await new Promise(r => setTimeout(r, 3000)); 
+                        // Bước C: Đặt tên file chuẩn .jpg
+                        let fileName = photo.name;
+                        if (!fileName.toLowerCase().endsWith('.jpg') && !fileName.toLowerCase().endsWith('.jpeg') && !fileName.toLowerCase().endsWith('.png')) {
+                            fileName += '.jpg';
+                        }
+
+                        // Bước D: Tạo link và click
+                        const link = document.createElement('a');
+                        link.href = blobUrl;
+                        link.download = fileName; 
+                        document.body.appendChild(link);
+                        link.click();
+                        
+                        // [QUAN TRỌNG NHẤT]: KHÔNG xóa link ngay lập tức.
+                        // Để link tồn tại 60 giây để Android kịp ghi file xuống bộ nhớ.
+                        setTimeout(() => {
+                            window.URL.revokeObjectURL(blobUrl);
+                            if (document.body.contains(link)) {
+                                document.body.removeChild(link);
+                            }
+                        }, 60000); 
+
+                        // Nghỉ 1 giây giữa các file để tránh bị nghẽn mạng
+                        await new Promise(r => setTimeout(r, 300)); 
 
                     } catch (err) {
-                        console.error("Lỗi tải:", photo.name, err);
+                        console.error("Lỗi Blob, thử fallback:", photo.name, err);
+                        // Nếu cách trên thất bại (do CORS), dùng cách mở Tab (Fallback)
+                        try {
+                            const fallbackLink = document.createElement('a');
+                            fallbackLink.href = photo.originalUrl || photo.url;
+                            fallbackLink.download = photo.name;
+                            fallbackLink.target = "_blank";
+                            document.body.appendChild(fallbackLink);
+                            fallbackLink.click();
+                            // Chờ lâu hơn cho fallback
+                            await new Promise(r => setTimeout(r, 2000));
+                        } catch (e) {}
                     }
                 }
 
-                // --- 3. DỌN DẸP SAU CÙNG ---
                 setIsMovingFiles(false);
                 
                 if (cancelDownloadRef.current) {
-                    showToast("Đã dừng quá trình tải!", "info");
+                    showToast("Đã dừng tải!", "info");
                 } else {
                     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
                     if (isIOS) {
-                        showToast("✅ Đã xong! Hãy kiểm tra ứng dụng 'Tệp' (Files).", "success");
+                        showToast("✅ Xong! Kiểm tra app 'Tệp' (Files).", "success");
                     } else {
-                        showToast("✅ Đã xong! Kiểm tra thanh thông báo điện thoại.", "success");
+                        showToast("✅ Xong! Kiểm tra mục 'Downloads' hoặc Bộ sưu tập.", "success");
                     }
                 }
-
-                // Đợi thêm 60 giây sau khi báo xong mới âm thầm dọn dẹp iframe
-                // Để chắc chắn những file cuối cùng tải xong hẳn
-                setTimeout(() => {
-                    tempIframes.forEach(frame => {
-                        if (document.body.contains(frame)) {
-                            document.body.removeChild(frame);
-                        }
-                    });
-                    console.log("Đã dọn dẹp tài nguyên tải xuống.");
-                }, 60000);
             };
 		
 
