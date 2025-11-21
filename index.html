@@ -300,7 +300,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
         });
 
         // LIGHTBOX REDESIGN: MODERN LIGHT THEME
-// === LIGHTBOX (FINAL: FIX LỖI KHÔNG KÉO ĐƯỢC KHI ZOOM) ===
+// === LIGHTBOX (FINAL: TAP-TO-TOGGLE UI + VUỐT MƯỢT + ZOOM) ===
         const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate }) => {
             if (!photo) return null;
             
@@ -308,20 +308,30 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             const [position, setPosition] = useState({ x: 0, y: 0 });
             const [isDragging, setIsDragging] = useState(false);
             
-            // Dùng State để lưu điểm bắt đầu kéo (cho cả Mouse và Touch)
+            // State xử lý cảm ứng
             const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+            const [swipeOffset, setSwipeOffset] = useState(0);
+            const [isSwiping, setIsSwiping] = useState(false);
+            
+            // [MỚI] State quản lý hiển thị nút bấm (UI)
+            const [showUI, setShowUI] = useState(true); 
+
+            const touchStartX = React.useRef(0);
+            const lastTouchDistance = React.useRef(null);
             
             const [isLoadingHighRes, setIsLoadingHighRes] = useState(false);
             const [isHighResLoaded, setIsHighResLoaded] = useState(false);
             
-            // State xử lý vuốt (Swipe)
-            const [swipeOffset, setSwipeOffset] = useState(0);
-            const [isSwiping, setIsSwiping] = useState(false);
-            const touchStartX = React.useRef(0);
-            
             const currentPhoto = allPhotos[currentIndex] || photo;
             const prevPhoto = currentIndex > 0 ? allPhotos[currentIndex - 1] : null;
             const nextPhoto = currentIndex < allPhotos.length - 1 ? allPhotos[currentIndex + 1] : null;
+
+            const getDistance = (touches) => {
+                return Math.hypot(
+                    touches[0].pageX - touches[1].pageX,
+                    touches[0].pageY - touches[1].pageY
+                );
+            };
 
             // Smart Preloader
             useEffect(() => {
@@ -339,25 +349,29 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 setScale(1);
                 setPosition({ x: 0, y: 0 });
                 setSwipeOffset(0); 
+                lastTouchDistance.current = null;
+                setShowUI(true); // Luôn hiện UI khi mới chuyển sang ảnh mới
             }, [photo.id, photo.lightboxUrl, photo.url]);
             
             const goToPrev = useCallback(() => { if (prevPhoto) { onNavigate(prevPhoto); } }, [prevPhoto, onNavigate]);
             const goToNext = useCallback(() => { if (nextPhoto) { onNavigate(nextPhoto); } }, [nextPhoto, onNavigate]);
             
-            // --- [QUAN TRỌNG] XỬ LÝ CẢM ỨNG ĐA NĂNG (VUỐT & KÉO) ---
+            // --- XỬ LÝ TOUCH ---
             const onTouchStart = (e) => {
-                // Nếu chạm bằng 1 ngón
+                if (e.touches.length === 2) {
+                    const distance = getDistance(e.touches);
+                    lastTouchDistance.current = distance;
+                    return;
+                }
                 if (e.touches.length === 1) {
+                    lastTouchDistance.current = null;
                     if (scale > 1) {
-                        // TRƯỜNG HỢP 1: ĐANG ZOOM -> CHẾ ĐỘ KÉO ẢNH (PAN)
                         setIsDragging(true);
-                        // Tính toán điểm lệch giữa ngón tay và vị trí ảnh hiện tại
                         setDragStart({ 
                             x: e.touches[0].clientX - position.x, 
                             y: e.touches[0].clientY - position.y 
                         });
                     } else {
-                        // TRƯỜNG HỢP 2: KHÔNG ZOOM -> CHẾ ĐỘ VUỐT ĐỔI ẢNH (SWIPE)
                         setIsSwiping(true);
                         touchStartX.current = e.targetTouches[0].clientX;
                     }
@@ -365,16 +379,23 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             }
 
             const onTouchMove = (e) => {
+                if (e.touches.length === 2 && lastTouchDistance.current) {
+                    const newDistance = getDistance(e.touches);
+                    const delta = newDistance / lastTouchDistance.current;
+                    lastTouchDistance.current = newDistance;
+                    setScale(prevScale => {
+                        const newScale = prevScale * delta;
+                        return Math.max(1, Math.min(newScale, 4));
+                    });
+                    return;
+                }
                 if (e.touches.length === 1) {
                     if (scale > 1 && isDragging) {
-                        // LOGIC KÉO ẢNH (PAN)
-                        // Vị trí mới = Vị trí ngón tay - Điểm lệch ban đầu
                         setPosition({ 
                             x: e.touches[0].clientX - dragStart.x, 
                             y: e.touches[0].clientY - dragStart.y 
                         });
                     } else if (scale === 1 && isSwiping) {
-                        // LOGIC VUỐT (SWIPE)
                         const currentX = e.targetTouches[0].clientX;
                         const diff = currentX - touchStartX.current;
                         setSwipeOffset(diff * 0.2); 
@@ -383,11 +404,17 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             }
 
             const onTouchEnd = () => {
+                lastTouchDistance.current = null;
+                
                 if (scale > 1) {
-                    // Kết thúc kéo
                     setIsDragging(false);
                 } else {
-                    // Kết thúc vuốt
+                    // Logic Tap to Toggle UI
+                    // Nếu không vuốt (swipeOffset gần bằng 0) thì coi như là TAP
+                    if (Math.abs(swipeOffset) < 5) {
+                        setShowUI(prev => !prev); // Ẩn/Hiện nút
+                    }
+
                     if (!isSwiping) return;
                     setIsSwiping(false);
                     const minSwipeDistance = 15; 
@@ -401,7 +428,6 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     }
                 }
             }
-            // -------------------------------------------------------
 
             const handleWheel = (e) => {
                 e.preventDefault();
@@ -409,7 +435,6 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 setScale(prev => Math.max(1, Math.min(prev * delta, 4)));
             };
             
-            // Xử lý chuột (Desktop)
             const handleMouseDown = (e) => {
                 if (scale > 1) {
                     setIsDragging(true);
@@ -437,9 +462,9 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 e.preventDefault();
                 e.stopPropagation();
                 if (scale === 1) {
-                    setScale(2); // Zoom nhanh
+                    setScale(2);
                 } else {
-                    resetZoom(); // Trả về
+                    resetZoom();
                 }
             };
             
@@ -457,7 +482,6 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 <div 
                     className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden" 
                     onClick={onClose}
-                    // Gắn sự kiện cảm ứng đã nâng cấp
                     onTouchStart={onTouchStart}
                     onTouchMove={onTouchMove}
                     onTouchEnd={onTouchEnd}
@@ -473,27 +497,32 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                         <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
                     </div>
 
-                    {/* Thông báo SD/HD */}
-                    <div className="absolute bottom-24 md:bottom-[104px] left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+                    {/* Thông báo SD/HD - Cũng ẩn hiện theo UI */}
+                    <div className={`absolute bottom-24 md:bottom-[104px] left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'}`}>
                         <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-md border ${isHighResLoaded ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                             {isHighResLoaded ? 'HD' : 'SD'}
                         </span>
                     </div>
                     
-                    <button onClick={onClose} className="absolute top-4 right-4 md:top-6 md:right-6 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md">
+                    {/* Nút Close cũng ẩn/hiện theo UI trên Mobile (Desktop luôn hiện) */}
+                    <button 
+                        onClick={onClose} 
+                        className={`absolute top-4 right-4 md:top-6 md:right-6 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}
+                    >
                         <Icon name="x" size={24} />
                     </button>
 
-                    <div className="absolute top-4 left-4 md:top-6 md:left-6 z-50 bg-white/80 border border-gray-100 backdrop-blur px-4 py-2 rounded-full shadow-sm max-w-[calc(100%-6rem)]">
+                    <div className={`absolute top-4 left-4 md:top-6 md:left-6 z-50 bg-white/80 border border-gray-100 backdrop-blur px-4 py-2 rounded-full shadow-sm max-w-[calc(100%-6rem)] transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'} md:opacity-100`}>
                         <div className="flex items-center gap-3">
                             <span className="text-sm font-bold text-gray-800 truncate">{currentPhoto.name}</span>
                             <span className="text-xs text-gray-400 border-l border-gray-300 pl-3">{currentIndex + 1} / {allPhotos.length} {scale > 1 && `• ${Math.round(scale * 100)}%`}</span>
                         </div>
                     </div>
 
+                    {/* Nút chọn ảnh - Quan trọng nên luôn hiện hoặc ẩn theo ý muốn (Ở đây tôi để ẩn cùng UI cho thoáng) */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); onToggleSelect(currentPhoto.id); }} 
-                        className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 flex items-center gap-2 shadow-xl ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
+                        className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 flex items-center gap-2 shadow-xl duration-300 ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} md:translate-y-0 md:opacity-100 md:pointer-events-auto ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
                     >
                         <Icon name="heart" size={24} fill={currentPhoto.isSelected ? "currentColor" : "none"} />
                         <span className="text-sm font-bold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
@@ -505,19 +534,33 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                         </button>
                     )}
 
+                    {/* NÚT PREV - MOBILE: Ẩn/Hiện theo showUI, DESKTOP: Luôn hiện nếu có */}
                     {prevPhoto && (
-                        <button onClick={(e) => { e.stopPropagation(); goToPrev(); }} className="absolute left-2 top-[70%] -translate-y-1/2 text-gray-600 hover:text-gray-900 p-3 bg-white/60 border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50 backdrop-blur-md">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); goToPrev(); }} 
+                            className={`absolute left-2 top-[70%] md:top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-3 md:p-4 bg-white/60 md:bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50 backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}
+                        >
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
                         </button>
                     )}
                     
+                    {/* NÚT NEXT - MOBILE: Ẩn/Hiện theo showUI, DESKTOP: Luôn hiện nếu có */}
                     {nextPhoto && (
-                        <button onClick={(e) => { e.stopPropagation(); goToNext(); }} className="absolute right-2 top-[70%] -translate-y-1/2 text-gray-600 hover:text-gray-900 p-3 bg-white/60 border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50 backdrop-blur-md">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); goToNext(); }} 
+                            className={`absolute right-2 top-[70%] md:top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-3 md:p-4 bg-white/60 md:bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50 backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}
+                        >
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </button>
                     )}
 
-                    <div className="relative w-full h-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                    <div className="relative w-full h-full flex items-center justify-center" 
+                        onClick={(e) => {
+                            // Ngăn sự kiện click xuyên qua background đóng modal
+                            // Chỉ click vào vùng đen mới đóng, click vào vùng ảnh là để toggle UI
+                            e.stopPropagation(); 
+                        }}
+                    >
                         
                         {prevPhoto && scale === 1 && (
                             <div className="hidden md:block absolute left-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToPrev(); }}>
@@ -541,13 +584,11 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                                     alt=""
                                     className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-0' : 'opacity-100'}`}
                                     style={{ 
-                                        // Khi Scale > 1, ưu tiên dùng Position X/Y để kéo
                                         transform: scale > 1 
                                             ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`
                                             : `translateX(${swipeOffset}px)`,
                                         transformOrigin: 'center',
-                                        // Khi đang Kéo (dragging) hoặc Vuốt (swiping), tắt transition để phản hồi tức thì
-                                        transition: (isSwiping || isDragging) ? 'none' : 'transform 0.2s ease-out' 
+                                        transition: (isSwiping || isDragging || lastTouchDistance.current) ? 'none' : 'transform 0.2s ease-out' 
                                     }}
                                     draggable={false}
                                 />
@@ -563,7 +604,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                                                 ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`
                                                 : `translateX(${swipeOffset}px)`,
                                             transformOrigin: 'center',
-                                            transition: (isSwiping || isDragging) ? 'none' : 'transform 0.2s ease-out'
+                                            transition: (isSwiping || isDragging || lastTouchDistance.current) ? 'none' : 'transform 0.2s ease-out'
                                         }}
                                         draggable={false}
                                     />
