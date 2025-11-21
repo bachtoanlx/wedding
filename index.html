@@ -72,6 +72,9 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+	
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -808,14 +811,14 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 			const cancelDownloadRef = React.useRef(false);
 			// [CẬP NHẬT] Hàm xử lý Download (Fix lỗi chặn Pop-up + Logic lọc thông minh)
 // [FIX FINAL] Hàm tải file: Giữ kết nối Iframe để đảm bảo file về máy
-// [FIX FINAL - ULTRA LIGHTWEIGHT] Tải trực tiếp từ Google Server (No Blob/No RAM)
+// [FIX FINAL: SUPER VIP] Tải & Nén ZIP (Giải quyết vấn đề 1000 clicks)
             const handleSmartDownload = async (type) => {
                 setShowDownloadMenu(false); 
                 cancelDownloadRef.current = false;
 
                 let filesToDownload = [];
 
-                // --- 1. LOGIC LỌC ẢNH (Giữ nguyên) ---
+                // --- 1. LOGIC LỌC ẢNH ---
                 if (type === 'SELECTED') {
                     let selectedSource = photos.filter(p => p.isSelected);
                     if (currentFolderId) {
@@ -849,65 +852,87 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     return;
                 }
 
-                // Thông báo
-                const confirmMsg = `Sắp tải ${filesToDownload.length} ảnh trực tiếp từ Google.\n\nLƯU Ý:\n- Tốc độ phụ thuộc vào mạng của bạn.\n- Giữ màn hình sáng.\n- Nếu trình duyệt hỏi "Cho phép tải nhiều tệp", hãy chọn CHO PHÉP.`;
+                // Thông báo chuyên nghiệp
+                const batchSize = 50; // Số lượng ảnh mỗi file ZIP (Để tránh tràn RAM điện thoại)
+                const totalBatches = Math.ceil(filesToDownload.length / batchSize);
+                
+                const confirmMsg = `Sắp tải ${filesToDownload.length} ảnh.\n\nHệ thống sẽ nén thành ${totalBatches} file ZIP để tải nhanh và không lỗi.\n\nBạn có muốn tiếp tục?`;
 
                 if (!window.confirm(confirmMsg)) return;
 
                 setIsMovingFiles(true);
-                setMoveProgress({ current: 0, total: filesToDownload.length, fileName: '' });
-
-                // --- 2. QUY TRÌNH TẢI "DIRECT LINK" ---
-                // Sử dụng Iframe ẩn để kích hoạt trình tải xuống của hệ điều hành
-                // Cách này không tốn RAM trình duyệt vì file không đi qua Javascript
                 
-                for (let i = 0; i < filesToDownload.length; i++) {
-                    // Kiểm tra nút Hủy
-                    if (cancelDownloadRef.current) {
-                        setIsMovingFiles(false);
-                        showToast(`Đã dừng tải!`, "info");
-                        return; 
+                // --- 2. QUY TRÌNH TẢI & NÉN ZIP ---
+                let currentBatch = 1;
+                
+                while (filesToDownload.length > 0 && !cancelDownloadRef.current) {
+                    // Lấy ra 50 ảnh đầu tiên để nén
+                    const batchPhotos = filesToDownload.splice(0, batchSize);
+                    const zip = new JSZip();
+                    const folderName = `Album_Phan_${currentBatch}`;
+                    const folder = zip.folder(folderName);
+
+                    // Tải từng ảnh vào ZIP
+                    for (let i = 0; i < batchPhotos.length; i++) {
+                        if (cancelDownloadRef.current) break;
+
+                        const photo = batchPhotos[i];
+                        // Tính toán phần trăm tổng thể
+                        const progressBase = (currentBatch - 1) * batchSize;
+                        setMoveProgress({ 
+                            current: progressBase + i + 1, 
+                            total: progressBase + batchPhotos.length + filesToDownload.length, 
+                            fileName: `Đang nén: ${photo.name} (Gói ${currentBatch})` 
+                        });
+
+                        try {
+                            // Hack: Dùng link thumbnail kích thước lớn (w5000) để Bypass CORS & Tải nhanh hơn API
+                            // Link này cho phép fetch từ trình duyệt mà không bị chặn
+                            const downloadUrl = `https://drive.google.com/thumbnail?id=${photo.id}&sz=w5000`;
+                            
+                            const response = await fetch(downloadUrl);
+                            if (response.ok) {
+                                const blob = await response.blob();
+                                // Thêm file vào ZIP
+                                let fileName = photo.name;
+                                if (!fileName.toLowerCase().endsWith('.jpg')) fileName += '.jpg';
+                                folder.file(fileName, blob);
+                            }
+                        } catch (err) {
+                            console.error("Lỗi nén ảnh:", photo.name, err);
+                        }
                     }
 
-                    const photo = filesToDownload[i];
-                    setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: photo.name });
+                    if (cancelDownloadRef.current) break;
+
+                    // Tạo file ZIP và tải xuống
+                    setMoveProgress(prev => ({ ...prev, fileName: `Đang tạo file ZIP phần ${currentBatch}...` }));
                     
                     try {
-                        // LINK THẦN THÁNH: Ép Google trả file gốc (Download Attachment)
-                        const downloadUrl = `https://www.googleapis.com/drive/v3/files/${photo.id}?alt=media&key=${driveApiKey}`;
+                        const content = await zip.generateAsync({ type: "blob" });
+                        saveAs(content, `${albumName}_Phan${currentBatch}.zip`); // Dùng FileSaver để tải
                         
-                        // Kỹ thuật: Tạo Iframe ẩn -> Gán src -> Trình duyệt tự bắt link và tải
-                        const iframe = document.createElement('iframe');
-                        iframe.style.display = 'none';
-                        iframe.src = downloadUrl;
-                        document.body.appendChild(iframe);
-
-                        // QUAN TRỌNG:
-                        // 1. Delay 1500ms (1.5 giây) để tránh Google chặn request liên tục (Rate Limit)
-                        // 2. Delay cũng giúp trình duyệt Mobile kịp xử lý tác vụ tải trước đó
-                        await new Promise(r => setTimeout(r, 1500)); 
-
-                        // Dọn dẹp iframe sau 60s (để chắc chắn tải xong mới xóa)
-                        // Không xóa ngay lập tức để tránh mất kết nối
-                        setTimeout(() => {
-                            if (document.body.contains(iframe)) {
-                                document.body.removeChild(iframe);
-                            }
-                        }, 60000);
-
+                        showToast(`✅ Đã tải xong phần ${currentBatch}/${totalBatches}`, "success");
+                        currentBatch++;
+                        
+                        // Nghỉ 1 chút để giải phóng RAM
+                        await new Promise(r => setTimeout(r, 1000)); 
                     } catch (err) {
-                        console.error("Lỗi kích hoạt tải:", photo.name, err);
+                        console.error("Lỗi tạo ZIP:", err);
+                        showToast("Lỗi khi tạo file nén!", "error");
                     }
                 }
 
                 setIsMovingFiles(false);
                 
-                if (!cancelDownloadRef.current) {
+                if (cancelDownloadRef.current) {
+                    showToast("Đã dừng tải!", "info");
+                } else {
                     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
                     if (isIOS) {
-                        showToast("✅ Đã xong! Mở app 'Tệp' (Files) để xem.", "success");
+                        showToast("🎉 Hoàn tất! Mở 'Tệp' (Files) để giải nén ZIP.", "success");
                     } else {
-                        showToast("✅ Đã tải xong tất cả!", "success");
+                        showToast("🎉 Hoàn tất! File ZIP đã lưu trong máy.", "success");
                     }
                 }
             };
