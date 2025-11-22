@@ -816,7 +816,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 			const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 			const cancelDownloadRef = React.useRef(false);
 			// [CẬP NHẬT] Hàm xử lý Download (Fix lỗi chặn Pop-up + Logic lọc thông minh)
-			// [PHƯƠNG ÁN CỨU CÁNH] Mobile: Tải ngầm từng tấm (Fetch) + Delay chống chặn
+			// [PHƯƠNG ÁN CHIA GÓI] Mobile: Tự động chia nhỏ (Chunking) để tải số lượng lớn
 const handleSmartDownload = async (type) => {
     setShowDownloadMenu(false);
     cancelDownloadRef.current = false;
@@ -857,11 +857,15 @@ const handleSmartDownload = async (type) => {
 
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // --- 2. CẢNH BÁO QUAN TRỌNG ---
+    // [CẤU HÌNH] Kích thước mỗi gói (Batch Size)
+    const BATCH_SIZE = 30; 
+
+    // --- 2. XÁC NHẬN ---
     let confirmMsg = `Bạn sắp tải xuống ${filesToDownload.length} ảnh (${modeDescription}).\n`;
     
     if (isMobileDevice) {
-        confirmMsg += `\n⚠️ CHẾ ĐỘ AN TOÀN (MOBILE):\n- Vì Google đang chặn mở nhiều tab, hệ thống sẽ tải ngầm từng tấm.\n- Tốc độ sẽ CHẬM (khoảng 3 giây/tấm) để tránh bị chặn tiếp.\n- Vui lòng KHÔNG tắt màn hình trong lúc tải.`;
+        const totalBatches = Math.ceil(filesToDownload.length / BATCH_SIZE);
+        confirmMsg += `\nCHẾ ĐỘ MOBILE (Chia gói):\n- Hệ thống sẽ chia thành ${totalBatches} đợt tải (mỗi đợt ${BATCH_SIZE} ảnh).\n- Vui lòng giữ màn hình sáng và chọn [CHO PHÉP] nếu trình duyệt hỏi.`;
     } else {
         confirmMsg += `\nẢnh gốc sẽ được lưu vào máy tính.`;
     }
@@ -869,10 +873,10 @@ const handleSmartDownload = async (type) => {
     if (!window.confirm(confirmMsg)) return;
 
     setIsMovingFiles(true);
-    setMoveProgress({ current: 0, total: filesToDownload.length, fileName: 'Đang kết nối Google...' });
+    setMoveProgress({ current: 0, total: filesToDownload.length, fileName: 'Đang khởi tạo...' });
 
     try {
-        // TRƯỜNG HỢP A: MÁY TÍNH (PC) - Giữ nguyên (Vẫn hoạt động tốt)
+        // TRƯỜNG HỢP A: MÁY TÍNH (PC) - Giữ nguyên logic xịn
         if (!isMobileDevice && 'showDirectoryPicker' in window) {
             const rootHandle = await window.showDirectoryPicker();
             let successCount = 0;
@@ -897,64 +901,74 @@ const handleSmartDownload = async (type) => {
             if (successCount > 0) showToast(`✅ Đã lưu ${successCount} ảnh vào máy tính!`, 'success');
         } 
         
-        // TRƯỜNG HỢP B: MOBILE - TẢI NGẦM (FETCH) + DELAY CAO
+        // TRƯỜNG HỢP B: MOBILE - LOGIC CHIA GÓI (BATCHING)
         else {
-            let successCount = 0;
+            let globalSuccessCount = 0;
             
-            // Thời gian nghỉ giữa các ảnh (ms). 
-            // Mức an toàn: 2500ms (2.5 giây). Nếu nhanh hơn Google sẽ chặn lại.
-            const SAFE_DELAY = 2500; 
+            // Chia mảng ảnh thành các mảng con
+            for (let i = 0; i < filesToDownload.length; i += BATCH_SIZE) {
+                if (cancelDownloadRef.current) break;
 
-            for (let i = 0; i < filesToDownload.length; i++) {
-                // 1. Kiểm tra Hủy
-                if (cancelDownloadRef.current) {
-                    showToast("Đã hủy quá trình tải.", "warning");
-                    break;
+                const chunk = filesToDownload.slice(i, i + BATCH_SIZE);
+                const currentBatchIndex = Math.floor(i / BATCH_SIZE) + 1;
+                const totalBatches = Math.ceil(filesToDownload.length / BATCH_SIZE);
+
+                // Thông báo bắt đầu gói mới
+                showToast(`🚀 Bắt đầu Gói ${currentBatchIndex}/${totalBatches} (${chunk.length} ảnh)...`, "info");
+                
+                // Xử lý từng ảnh trong gói
+                for (let j = 0; j < chunk.length; j++) {
+                    if (cancelDownloadRef.current) break;
+                    
+                    const photo = chunk[j];
+                    // Cập nhật tiến trình tổng
+                    const currentGlobalIndex = i + j + 1;
+                    setMoveProgress({ 
+                        current: currentGlobalIndex, 
+                        total: filesToDownload.length, 
+                        fileName: `Gói ${currentBatchIndex}: ${photo.name}` 
+                    });
+
+                    // Logic tải: Thẻ A + target _blank
+                    let downloadUrl = photo.originalUrl;
+                    if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) {
+                         downloadUrl += `&key=${driveApiKey}`;
+                    }
+
+                    try {
+                        const link = document.createElement('a');
+                        link.href = downloadUrl;
+                        link.target = '_blank';
+                        link.download = photo.name;
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+                        setTimeout(() => document.body.removeChild(link), 100);
+                        
+                        globalSuccessCount++;
+                        
+                        // Delay giữa các ảnh trong cùng 1 gói: 1 giây
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    } catch (e) {
+                        console.error("Lỗi tải link:", e);
+                    }
                 }
 
-                const photo = filesToDownload[i];
-                setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: `Đang tải: ${photo.name}` });
-
-                try {
-                    // 2. Xây dựng URL tải API (Không phải link view)
-                    let targetUrl = photo.originalUrl;
-                    // Đảm bảo có API Key
-                    if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) {
-                         targetUrl += `&key=${driveApiKey}`;
-                    }
-
-                    // 3. Tải dữ liệu về (Fetch)
-                    const response = await fetch(targetUrl);
-                    
-                    if (!response.ok) {
-                        if (response.status === 403 || response.status === 429) {
-                            throw new Error("Google đang chặn (Quá tải). Vui lòng đợi 1 phút rồi thử lại.");
-                        }
-                        throw new Error(`Lỗi HTTP ${response.status}`);
-                    }
-
-                    const blob = await response.blob();
-
-                    // 4. Lưu file ngay lập tức
-                    saveAs(blob, photo.name);
-                    successCount++;
-
-                    // 5. [QUAN TRỌNG] Nghỉ ngơi để tránh Google chặn
-                    // Đừng xóa dòng này, nếu không sẽ bị lỗi "We're sorry" lần nữa
-                    await new Promise(resolve => setTimeout(resolve, SAFE_DELAY));
-
-                } catch (e) {
-                    console.error(`Lỗi tải ${photo.name}:`, e);
-                    // Nếu gặp lỗi chặn, dừng luôn để bảo vệ
-                    if (e.message.includes("Google đang chặn")) {
-                        alert(e.message);
-                        break;
-                    }
+                // SAU KHI XONG 1 GÓI: Nghỉ giải lao (nếu chưa phải gói cuối)
+                if (currentBatchIndex < totalBatches && !cancelDownloadRef.current) {
+                    setMoveProgress({ 
+                        current: i + chunk.length, 
+                        total: filesToDownload.length, 
+                        fileName: `⏳ Nghỉ 3s trước khi sang Gói ${currentBatchIndex + 1}...` 
+                    });
+                    // Nghỉ 3 giây để trình duyệt dọn dẹp
+                    await new Promise(resolve => setTimeout(resolve, 3000));
                 }
             }
             
-            if (successCount > 0) {
-                showToast(`✅ Hoàn tất! Đã tải ${successCount}/${filesToDownload.length} ảnh.`, 'success');
+            if (globalSuccessCount > 0) {
+                showToast(`✅ Hoàn tất! Đã xử lý ${globalSuccessCount} ảnh.`, 'success');
             }
         }
     } catch (err) {
