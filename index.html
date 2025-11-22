@@ -859,13 +859,13 @@ const handleSmartDownload = async (type) => {
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     // [QUAN TRỌNG] GIỚI HẠN CHO MOBILE
-    const MOBILE_LIMIT = 30; // Chỉ cho phép tải tối đa 30 ảnh một lần trên điện thoại
+    const MOBILE_LIMIT = 100; // Chỉ cho phép tải tối đa 100 ảnh một lần trên điện thoại
     
     if (isMobileDevice && filesToDownload.length > MOBILE_LIMIT) {
         alert(
             `⚠️ CẢNH BÁO SỐ LƯỢNG LỚN\n\n` +
-            `Bạn đang chọn tải ${filesToDownload.length} tấm ảnh trên điện thoại.\n` +
-            `Việc tải quá nhiều file lẻ sẽ làm treo điện thoại và bị trình duyệt chặn.\n\n` +
+            `Bạn đang chọn tải ${filesToDownload.length} ảnh trên điện thoại.\n` +
+            `Việc tải quá nhiều file sẽ làm treo điện thoại.\n\n` +
             `GIẢI PHÁP:\n` +
             `1. Vui lòng sử dụng Máy Tính (PC/Laptop) để tải số lượng lớn (Tự động xếp vào thư mục).\n` +
             `2. Hoặc chia nhỏ, chỉ chọn dưới ${MOBILE_LIMIT} tấm mỗi lần tải trên điện thoại.`
@@ -944,8 +944,8 @@ const handleSmartDownload = async (type) => {
                     
                     successCount++;
 
-                    // Delay 1.2 giây
-                    await new Promise(resolve => setTimeout(resolve, 1200));
+                    // Delay 1 giây
+                    await new Promise(resolve => setTimeout(resolve, 1000));
 
                 } catch (e) {
                     console.error("Lỗi tải link:", e);
