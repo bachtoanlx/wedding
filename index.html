@@ -220,6 +220,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 
             const handleCardClick = useCallback(() => { onOpenView(photo); }, [photo, onOpenView]);
             const handleToggleClick = useCallback((e) => { e.stopPropagation(); onToggleSelect(photo.id); }, [photo.id, onToggleSelect]);
+			const isDownloaded = downloadedIds && downloadedIds.has(photo.id);
 
             return (
             <div className={`relative group md:rounded-xl overflow-hidden bg-white md:shadow-sm transition-all duration-200 ${photo.isSelected ? 'ring-2 ring-pink-500 shadow-md' : 'md:hover:shadow-lg'}`}>
@@ -234,15 +235,21 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-medium text-gray-700 truncate flex-1 mr-2">{photo.name}</span>
                         
-                        <div className="flex items-center gap-1">
-                            {/* Nút Tải Xuống Mới */}
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onDownload(photo); }}
-                                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:bg-blue-100 hover:text-blue-600 transition-colors"
-                                title="Tải ảnh này"
-                            >
-                                <Icon name="download" size={16} />
-                            </button>
+                        {/* Sửa phần nút bấm bên dưới */}
+						<div className="flex items-center gap-1">
+							{/* Nút Tải Xuống: Đổi màu nếu đã tải */}
+							<button 
+								onClick={(e) => { e.stopPropagation(); onDownload(photo); }}
+								className={`w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${
+									isDownloaded 
+									? 'bg-green-100 text-green-600 ring-1 ring-green-300 shadow-sm' // Style ĐÃ TẢI
+									: 'bg-gray-50 text-gray-400 hover:bg-blue-100 hover:text-blue-600' // Style CHƯA TẢI
+								}`}
+								title={isDownloaded ? "Đã tải về (Tải lại)" : "Tải ảnh này"}
+							>
+								{/* Nếu đã tải hiện dấu Check, chưa tải hiện mũi tên Download */}
+								<Icon name={isDownloaded ? "check" : "download"} size={16} strokeWidth={isDownloaded ? 3 : 2} />
+							</button>
 
                             {/* Nút Thả Tim Cũ */}
                             <button 
@@ -696,6 +703,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                 onOpenView, 
                 allowComments, 
                 itemWidth,
+				downloadedIds,
                 onDownload: onDownload // <--- ĐÃ SỬA: Dùng prop truyền vào
             }), [photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth, onDownload]);
 
@@ -949,58 +957,73 @@ const handleSmartDownload = async (type) => {
 
 
 
-			// [FIX FINAL] Hàm tải 1 ảnh lẻ - ĐÚNG TÊN FILE - KHÔNG MỞ TAB
+			// [FIX FINAL iOS + ANDROID] Hàm tải 1 ảnh lẻ + Đánh dấu đã tải
 const handleSingleDownload = useCallback((photo) => {
     if (!photo) return;
     
     try {
-        showToast(`Đang xử lý: ${photo.name}...`, 'info');
+        // 1. Kiểm tra trạng thái cũ để báo thông báo phù hợp
+        const isDownloaded = downloadedIds.has(photo.id);
+        const msg = isDownloaded ? `Đang tải lại: ${photo.name}...` : `Đang xử lý: ${photo.name}...`;
+        showToast(msg, 'info');
         
-        // TRƯỜNG HỢP 1: File Local (Vừa upload từ máy lên, chưa F5)
-        // Loại này nằm trong RAM nên tải được ngay lập tức, đúng 100% tên.
+        // 2. FILE LOCAL (Upload từ máy lên) -> Dùng saveAs luôn OK
         if (photo.originalFile) {
             saveAs(photo.originalFile, photo.name);
             showToast(`✅ Đã lưu: ${photo.name}`, 'success');
+            markAsDownloaded(photo.id); // Đánh dấu luôn
             return;
         } 
 
-        // TRƯỜNG HỢP 2: File từ Google Drive
-        // Chúng ta phải chuyển đổi URL để ép Google trả về tên file đúng.
-        
+        // 3. CHUẨN BỊ URL
         let downloadUrl = "";
-
         if (photo.isFromDrive) {
-            // [QUAN TRỌNG] Chuyển đổi sang link Export công khai
-            // Link này sẽ ép trình duyệt tải xuống với tên file gốc trên Drive
+            // Link Export ép tải về đúng tên file
             downloadUrl = `https://drive.google.com/uc?export=download&id=${photo.id}`;
-            
-            // Mẹo: Thêm timestamp để trình duyệt không dùng cache cũ bị lỗi
-            downloadUrl += `&t=${Date.now()}`;
+            downloadUrl += `&t=${Date.now()}`; // Chống cache
         } else {
-            // Fallback cho các trường hợp khác (ít gặp)
             downloadUrl = photo.originalUrl || photo.url;
         }
 
-        // SỬ DỤNG IFRAME ẨN (Thay vì thẻ A hay Window.open)
-        // Iframe giúp tải file mà người dùng không hề thấy tab mới bật lên
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = downloadUrl;
-        
-        document.body.appendChild(iframe);
+        // 4. KIỂM TRA THIẾT BỊ (Detect iOS)
+        const ua = navigator.userAgent;
+        const isiOS = /iPhone|iPad|iPod/i.test(ua);
 
-        // Dọn dẹp iframe sau 60s (Đủ thời gian để mạng chậm bắt được link)
-        setTimeout(() => {
-            try { document.body.removeChild(iframe); } catch {}
-        }, 60000);
+        if (isiOS) {
+            // === DÀNH RIÊNG CHO IPHONE/IPAD ===
+            // Mở tab mới -> iOS sẽ hiện popup hỏi "Tải về?" chuẩn của hệ thống
+            // Cách này tuy nhảy tab nhưng đảm bảo 100% lấy được file
+            const tab = window.open(downloadUrl, '_blank');
+            
+            // Tự đóng tab sau 2s (nếu trình duyệt cho phép) để khách đỡ phải đóng
+            if (tab) {
+                setTimeout(() => { try { tab.close() } catch{} }, 2000);
+            }
+        } else {
+            // === DÀNH CHO ANDROID / PC ===
+            // Dùng Iframe ẩn để tải ngầm cho mượt (Android rất thích cách này)
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = downloadUrl;
+            document.body.appendChild(iframe);
 
-        showToast(`✅ Đã gửi lệnh tải. Vui lòng đợi trong giây lát...`, 'success');
+            // Dọn dẹp sau 60s
+            setTimeout(() => {
+                try { document.body.removeChild(iframe); } catch {}
+            }, 60000);
+        }
+
+        // 5. LƯU TRẠNG THÁI "ĐÃ TẢI" (QUAN TRỌNG)
+        // Dù là iOS hay Android, cứ bấm là ta đánh dấu màu xanh ngay
+        markAsDownloaded(photo.id); 
+
+        showToast(`✅ Đã gửi lệnh tải. Hãy kiểm tra máy.`, 'success');
 
     } catch (error) {
         console.error(error);
         showToast("❌ Lỗi khi tải ảnh", "error");
     }
-}, []);
+}, [downloadedIds, markAsDownloaded, driveApiKey]); // Nhớ thêm dependencies
 
             const [isInitialized, setIsInitialized] = useState(false); 
             const [showPasscodeModal, setShowPasscodeModal] = useState(true); 
@@ -2098,6 +2121,7 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                         onUpdateComment={updateComment}
                                         onOpenView={handlePhotoChange}
                                         allowComments={allowComments}
+										downloadedIds={downloadedIds}
                                         onDownload={handleSingleDownload} // <--- THÊM DÒNG NÀY
                                     />
                                 )}
@@ -2110,6 +2134,7 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                 onToggleSelect={toggleSelect} 
                                 currentIndex={selectedPhotoIndex}
                                 onNavigate={handlePhotoChange}
+								downloadedIds={downloadedIds}
 								onDownload={handleSingleDownload}
                             />
                         </div>
