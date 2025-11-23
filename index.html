@@ -205,7 +205,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
         </div>
     );
 };
-        // === PHOTOCARD (ĐÃ SỬA LỖI REFERENCE ERROR) ===
+        // === PHOTOCARD (ĐÃ XÓA LỚP PHỦ ĐEN ÁM ẢNH) ===
 const PhotoCard = React.memo(({ 
     photo, 
     viewMode, 
@@ -214,7 +214,7 @@ const PhotoCard = React.memo(({
     onOpenView, 
     allowComments, 
     onDownload, 
-    downloadedIds // <--- BỔ SUNG THAM SỐ NÀY
+    downloadedIds 
 }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [localComment, setLocalComment] = useState(photo.comments || "");
@@ -228,29 +228,40 @@ const PhotoCard = React.memo(({
     const handleCardClick = useCallback(() => { onOpenView(photo); }, [photo, onOpenView]);
     const handleToggleClick = useCallback((e) => { e.stopPropagation(); onToggleSelect(photo.id); }, [photo.id, onToggleSelect]);
 
-    // Kiểm tra trạng thái đã tải (Giờ biến này đã được định nghĩa từ props)
     const isDownloaded = downloadedIds && downloadedIds.has(photo.id);
 
     return (
     <div className={`relative group md:rounded-xl overflow-hidden bg-white md:shadow-sm transition-all duration-200 ${photo.isSelected ? 'ring-2 ring-pink-500 shadow-md' : 'md:hover:shadow-lg'}`}>
+        {/* Phần hiển thị ảnh */}
         <div className="aspect-[3/4] md:aspect-[4/5] cursor-pointer overflow-hidden relative bg-gray-100" onClick={handleCardClick}>
+            {/* Placeholder màu xám khi đang tải */}
             <div className={`w-full h-full bg-gray-100 transition-opacity duration-500 ${isLoaded ? 'opacity-0 absolute' : 'opacity-100'}`} />
-            <img src={photo.url} alt="" loading="lazy" decoding="async" onLoad={() => setIsLoaded(true)} className={`w-full h-full object-cover transition-all duration-500 md:group-hover:scale-105 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} style={{ transform: 'translateZ(0)' }} />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300" />
+            
+            {/* Ảnh chính - Đã xóa lớp gradient đen phủ lên trên */}
+            <img 
+                src={photo.url} 
+                alt="" 
+                loading="lazy" 
+                decoding="async" 
+                onLoad={() => setIsLoaded(true)} 
+                className={`w-full h-full object-cover transition-all duration-500 md:group-hover:scale-105 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+                style={{ transform: 'translateZ(0)' }} 
+            />
         </div>
 
+        {/* Phần thông tin bên dưới */}
         <div className="absolute md:translate-y-2 md:group-hover:translate-y-0 bottom-0 left-0 right-0 p-3 transition-transform duration-300 bg-white/95 border-t border-gray-100">
             <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-medium text-gray-700 truncate flex-1 mr-2">{photo.name}</span>
                 
                 <div className="flex items-center gap-1">
-                    {/* Nút Tải Xuống: Đổi màu nếu đã tải */}
+                    {/* Nút Tải Xuống */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); onDownload(photo); }}
                         className={`w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${
                             isDownloaded 
-                            ? 'bg-green-100 text-green-600 ring-1 ring-green-300 shadow-sm' // Style ĐÃ TẢI
-                            : 'bg-gray-50 text-gray-400 hover:bg-blue-100 hover:text-blue-600' // Style CHƯA TẢI
+                            ? 'bg-green-100 text-green-600 ring-1 ring-green-300 shadow-sm' 
+                            : 'bg-gray-50 text-gray-400 hover:bg-blue-100 hover:text-blue-600'
                         }`}
                         title={isDownloaded ? "Đã tải về (Tải lại)" : "Tải ảnh này"}
                     >
@@ -287,7 +298,7 @@ const PhotoCard = React.memo(({
         {photo.isSelected && <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md z-10">ĐÃ CHỌN</div>}
     </div>
     );
-}, (prev, next) => prev.photo === next.photo && prev.viewMode === next.viewMode && prev.allowComments === next.allowComments && prev.downloadedIds === next.downloadedIds); // Nhớ so sánh cả downloadedIds để re-render khi tải xong
+}, (prev, next) => prev.photo === next.photo && prev.viewMode === next.viewMode && prev.allowComments === next.allowComments && prev.downloadedIds === next.downloadedIds);
 
         // LIGHTBOX REDESIGN: MODERN LIGHT THEME
 // === LIGHTBOX (FINAL: SD/HD TRONG SUỐT + GẦN NÚT CHỌN) ===
@@ -700,7 +711,7 @@ const VirtualPhotoGrid = React.memo(({
 
     // Tính toán các biến số
     const isMobile = dimensions.width < 768;
-    const columnCount = isMobile ? 1 : 5; 
+    const columnCount = isMobile ? 1 : 4; 
     const itemWidth = Math.floor(dimensions.width / columnCount);
     const imageRatio = 5 / 4; 
     const footerHeight = 60; 
@@ -1209,6 +1220,18 @@ useEffect(() => {
                 return () => clearTimeout(timer);
             }, [driveFolders, driveApiKey, adminPassword, allowComments, saveConfigToFirebase]);
 
+            // ----------------------------------------------------------------
+            // [FIX FINAL] ĐỒNG BỘ TRẠNG THÁI ADMIN PANEL VÀ VIEW MODE
+            // ----------------------------------------------------------------
+            useEffect(() => {
+                if (viewMode === 'PHOTOGRAPHER') {
+                    // Nếu là Admin -> Mở Panel
+                    setShowAdminPanel(true);
+                } else {
+                    // Nếu là Khách (Exit) -> Đóng Panel ngay lập tức
+                    setShowAdminPanel(false);
+                }
+            }, [viewMode]);
 
             // --- CÁC HÀM CẬP NHẬT TRẠNG THÁI (Ghi tối ưu) ---
             // FIX: Wrapped in useCallback and used functional updates to maintain stability and performance
@@ -1700,24 +1723,24 @@ const handlePasscodeAccess = async (inputPasscode) => {
     }
 };
 
-
-
-
-
-
-            const handleLogin = () => {
-                // Sửa lỗi: Chỉ so sánh khi adminPassword đã được tải và passwordInput khớp
-                if (adminPassword && passwordInput === adminPassword) { 
+const handleLogin = () => {
+                if (adminPassword && passwordInput.trim() === adminPassword) { 
+                    // 1. Xác thực thành công
                     setIsAuthenticated(true);
+                    
+                    // 2. Lưu token
+                    localStorage.setItem(`lensflow_admin_token_${albumKey}`, passwordInput.trim());
+                    setPasswordInput("");
                     setShowLoginModal(false);
                     setLoginError(false);
-                    setPasswordInput("");
-                    // Lưu token vào localStorage để tự động đăng nhập lại
-                    localStorage.setItem(`lensflow_admin_token_${albumKey}`, passwordInput);
-
-                    setViewMode('PHOTOGRAPHER');
+                    
+                    // 3. Chuyển chế độ (useEffect ở Bước 1 sẽ tự động mở Panel ra)
+                    setViewMode('PHOTOGRAPHER'); 
+                    
+                    showToast("🔓 Đăng nhập Admin thành công!", "success");
                 } else {
                     setLoginError(true);
+                    showToast("Mật khẩu không đúng", "error");
                 }
             };
 
@@ -1859,11 +1882,21 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                 onClick={() => setShowAdminPanel(false)}
                             ></div>
                         )}
+						{/* Admin Panel - ĐÃ SỬA CSS ĐỂ KHÔNG CẦN F5 */}
+                        <div className={`fixed md:relative top-0 left-0 h-full z-40 md:z-auto 
+                            transition-all duration-300 ease-in-out bg-white border-r border-gray-200 overflow-hidden
+                            
+                            ${/* LOGIC CHO PC (Màn hình lớn) */ ""}
+                            ${viewMode === 'PHOTOGRAPHER' ? 'md:w-80' : 'md:w-0'}
+                            
+                            ${/* LOGIC CHO MOBILE (Màn hình nhỏ) */ ""}
+                            ${showAdminPanel ? 'translate-x-0' : '-translate-x-full'} 
+                            md:translate-x-0 
+                            
+                            shadow-xl md:shadow-none`}
+                        >
 
-                        {/* Admin Panel */}
-                        <div className={`fixed md:relative top-0 left-0 h-full z-40 md:z-auto transition-transform duration-300 ease-in-out bg-white border-r border-gray-200 overflow-hidden ${
-                            viewMode === 'PHOTOGRAPHER' ? 'w-80' : 'w-0'
-                        } ${showAdminPanel ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 shadow-xl md:shadow-none`}>
+
                             <div className="p-6 overflow-y-auto h-full">
                                 <div className="flex items-center justify-between gap-2 text-pink-500 mb-8">
                                     <Icon name="camera" size={28} />
@@ -2106,14 +2139,15 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                     
                                     <button onClick={() => {
                                         if (isAuthenticated && viewMode === 'PHOTOGRAPHER') {
+                                            // Nếu đang là Admin, nút này sẽ thoát ra chế độ Client
                                             setIsAuthenticated(false);
                                             setViewMode('CLIENT');
-                                            // Xóa token khi Admin chủ động thoát
                                             localStorage.removeItem(`lensflow_admin_token_${albumKey}`);
                                             showToast("Đã thoát chế độ Admin");
-                                        } else if (isAuthenticated) {
-                                            setViewMode('PHOTOGRAPHER');
-                                        } else {
+                                        } 
+                                        // [FIX] Nếu chưa phải Admin (đang là Client), nút này chỉ có 1 nhiệm vụ là mở modal đăng nhập.
+                                        // Không cần nhánh else if (isAuthenticated) vì nó gây xung đột logic.
+                                        else {
                                             setShowLoginModal(true);
                                         }
                                     }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === 'PHOTOGRAPHER' ? 'bg-red-50 text-red-500 border border-red-100 hover:bg-red-100' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>
