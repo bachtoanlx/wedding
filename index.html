@@ -949,53 +949,58 @@ const handleSmartDownload = async (type) => {
 
 
 
-			// [CẬP NHẬT] Hàm tải 1 ảnh lẻ (Fix lỗi mở tab + tên file)
+			// [FIX FINAL] Hàm tải 1 ảnh lẻ - ĐÚNG TÊN FILE - KHÔNG MỞ TAB
 const handleSingleDownload = useCallback((photo) => {
     if (!photo) return;
     
     try {
-        showToast(`Đang bắt đầu tải: ${photo.name}...`, 'info');
+        showToast(`Đang xử lý: ${photo.name}...`, 'info');
         
-        // 1. NẾU LÀ FILE LOCAL (Vừa upload lên) -> Dùng FileSaver lưu luôn
+        // TRƯỜNG HỢP 1: File Local (Vừa upload từ máy lên, chưa F5)
+        // Loại này nằm trong RAM nên tải được ngay lập tức, đúng 100% tên.
         if (photo.originalFile) {
             saveAs(photo.originalFile, photo.name);
             showToast(`✅ Đã lưu: ${photo.name}`, 'success');
             return;
         } 
 
-        // 2. NẾU LÀ LINK TỪ DRIVE
-        let targetUrl = photo.originalUrl || photo.url;
+        // TRƯỜNG HỢP 2: File từ Google Drive
+        // Chúng ta phải chuyển đổi URL để ép Google trả về tên file đúng.
         
-        // Thêm API Key
-        if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) {
-            targetUrl += `&key=${driveApiKey}`;
-        }
-        
-        // Thêm timestamp
-        const sep = targetUrl.includes("?") ? "&" : "?";
-        targetUrl += `${sep}t=${Date.now()}`;
+        let downloadUrl = "";
 
-        // --- [THAY ĐỔI QUAN TRỌNG] ---
-        
-        // Cách 1: Dùng iframe ẩn (Tốt nhất để không bị mở tab mới)
-        // Trình duyệt sẽ tự tải xuống nền.
+        if (photo.isFromDrive) {
+            // [QUAN TRỌNG] Chuyển đổi sang link Export công khai
+            // Link này sẽ ép trình duyệt tải xuống với tên file gốc trên Drive
+            downloadUrl = `https://drive.google.com/uc?export=download&id=${photo.id}`;
+            
+            // Mẹo: Thêm timestamp để trình duyệt không dùng cache cũ bị lỗi
+            downloadUrl += `&t=${Date.now()}`;
+        } else {
+            // Fallback cho các trường hợp khác (ít gặp)
+            downloadUrl = photo.originalUrl || photo.url;
+        }
+
+        // SỬ DỤNG IFRAME ẨN (Thay vì thẻ A hay Window.open)
+        // Iframe giúp tải file mà người dùng không hề thấy tab mới bật lên
         const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
-        iframe.src = targetUrl;
-        document.body.appendChild(iframe);
+        iframe.src = downloadUrl;
         
-        // Dọn dẹp sau 60s (đủ thời gian để trình duyệt bắt link)
+        document.body.appendChild(iframe);
+
+        // Dọn dẹp iframe sau 60s (Đủ thời gian để mạng chậm bắt được link)
         setTimeout(() => {
             try { document.body.removeChild(iframe); } catch {}
         }, 60000);
 
-        showToast(`✅ Đã gửi lệnh tải: ${photo.name}. Vui lòng kiểm tra thư mục Download.`, 'success');
+        showToast(`✅ Đã gửi lệnh tải. Vui lòng đợi trong giây lát...`, 'success');
 
     } catch (error) {
         console.error(error);
         showToast("❌ Lỗi khi tải ảnh", "error");
     }
-}, [driveApiKey]);
+}, []);
 
             const [isInitialized, setIsInitialized] = useState(false); 
             const [showPasscodeModal, setShowPasscodeModal] = useState(true); 
