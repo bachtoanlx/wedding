@@ -815,18 +815,17 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             const [moveProgress, setMoveProgress] = useState({ current: 0, total: 0, fileName: '' });
 			const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 			const cancelDownloadRef = React.useRef(false);
-//
-		// ====================================================================
+
+// ====================================================================
 // HÀM DOWNLOAD THÔNG MINH (PC GIỮ NGUYÊN - MOBILE AN TOÀN)
 // ====================================================================
 const handleSmartDownload = async (type) => {
-    // 1. Ẩn menu download
     setShowDownloadMenu(false);
     cancelDownloadRef.current = false;
 
-    // ----------------------------------------------------------------
-    // BƯỚC 1: LỌC DANH SÁCH ẢNH (Logic chuẩn)
-    // ----------------------------------------------------------------
+    // ============================================================
+    // 1. LỌC ẢNH (Logic chuẩn xác: Tách biệt folder/All)
+    // ============================================================
     let filesToDownload = [];
     let locationName = "";
 
@@ -859,18 +858,16 @@ const handleSmartDownload = async (type) => {
         return showToast(`Không tìm thấy ảnh nào trong ${locationName}!`, "warning");
     }
 
-    // ----------------------------------------------------------------
-    // BƯỚC 2: PHÂN LOẠI THIẾT BỊ
-    // ----------------------------------------------------------------
-    const ua = navigator.userAgent;
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|Opera Mini|Mobile/i.test(ua);
-    const isiOS = /iPhone|iPad|iPod/i.test(ua);
+    // ============================================================
+    // 2. PHÂN LOẠI THIẾT BỊ
+    // ============================================================
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|Opera Mini|Mobile/i.test(navigator.userAgent);
 
     // ============================================================
-    // TRƯỜNG HỢP 1: PC/LAPTOP (CODE GỐC CỦA BẠN - GIỮ NGUYÊN 100%)
+    // 3. XỬ LÝ: NẾU LÀ PC (Code của bạn)
     // ============================================================
     if (!isMobileDevice && 'showDirectoryPicker' in window) {
-        if (!window.confirm(`💻 CHẾ ĐỘ PC:\nBạn sắp tải ${filesToDownload.length} ảnh về máy tính.\nHệ thống sẽ yêu cầu bạn chọn một thư mục để lưu.`)) return;
+        if (!window.confirm(`💻 CHẾ ĐỘ PC:\nBạn sắp tải ${filesToDownload.length} ảnh về máy tính (${locationName}).\nHệ thống sẽ yêu cầu bạn chọn một thư mục để lưu.`)) return;
 
         setIsMovingFiles(true);
         setMoveProgress({ current: 0, total: filesToDownload.length, fileName: 'Đang khởi tạo...' });
@@ -878,6 +875,9 @@ const handleSmartDownload = async (type) => {
         try {
             // Xin quyền truy cập folder
             const rootHandle = await window.showDirectoryPicker();
+            // Tạo thêm folder con theo tên Album cho gọn (Option)
+            // const albumFolder = await rootHandle.getDirectoryHandle(albumName || "Album", {create: true}); 
+            
             let successCount = 0;
 
             for (let i = 0; i < filesToDownload.length; i++) {
@@ -890,168 +890,106 @@ const handleSmartDownload = async (type) => {
                 setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: photo.name });
 
                 try {
+                    // Xử lý URL (Thêm API Key nếu cần)
                     let targetUrl = photo.originalUrl;
-                    if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) targetUrl += `&key=${driveApiKey}`;
+                    if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) {
+                        targetUrl += `&key=${driveApiKey}`;
+                    }
                     
-                    // Tải Blob
+                    // Tải Blob (PC Fetch thoải mái hơn nếu link hỗ trợ CORS, hoặc Google Drive Direct link đôi khi vẫn chạy được trên Chrome PC)
                     const response = await fetch(targetUrl);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const blob = await response.blob();
 
-                    // Tạo folder con (nếu cần) và lưu file
-                    // Fix nhỏ: Thay thế ký tự lạ để tránh lỗi tạo folder trên Windows
+                    // Tạo folder con dựa trên tên Folder trong Drive
                     const safeFolderName = (photo.folderName || "Khac").replace(/[:\/\\?*|"><]/g, "_");
                     const folderHandle = await rootHandle.getDirectoryHandle(safeFolderName, { create: true });
                     
-                    // Fix nhỏ: Thay thế ký tự lạ trong tên file
+                    // Lưu file
                     const safeFileName = photo.name.replace(/[:\/\\?*|"><]/g, "_");
                     const fileHandle = await folderHandle.getFileHandle(safeFileName, { create: true });
-                    
                     const writable = await fileHandle.createWritable();
                     await writable.write(blob);
                     await writable.close();
+                    
                     successCount++;
                 } catch (err) { 
                     console.error(`Lỗi lưu ${photo.name}:`, err); 
+                    // Nếu fetch lỗi trên PC (do CORS), có thể fallback mở tab tại đây nếu muốn
+                    // window.open(targetUrl, '_blank');
                 }
             }
-            if (successCount > 0) showToast(`✅ PC: Đã lưu ${successCount} ảnh vào thư mục!`, 'success');
+            
+            if (successCount > 0) {
+                showToast(`✅ PC: Đã lưu ${successCount}/${filesToDownload.length} ảnh vào thư mục!`, 'success');
+            } else {
+                showToast("⚠️ Không lưu được ảnh nào. Có thể do chặn truy cập (CORS).", "error");
+            }
+
         } catch (err) {
             if (err.name !== 'AbortError') showToast("Lỗi PC: " + err.message, "error");
         } finally {
             setIsMovingFiles(false);
+            setMoveProgress({ current: 0, total: 0, fileName: '' });
         }
-        return; // Kết thúc xử lý cho PC
-    }
-
+    } 
     // ============================================================
-    // TRƯỜNG HỢP 2: MOBILE (SỬ DỤNG LOGIC AN TOÀN NHẤT: IFRAME TUẦN TỰ)
+    // 4. XỬ LÝ: NẾU LÀ MOBILE (Thông báo hướng dẫn)
     // ============================================================
-    // Lý do: Mobile không cho phép lưu file trực tiếp vào folder như PC
-    // và rất dễ bị chặn nếu tải nhanh. Ta dùng cách tải chậm mà chắc.
-    
-    const total = filesToDownload.length;
-    const estMinutes = Math.ceil(total * 4 / 60);
-
-    if (!confirm(
-        `📱 MOBILE MODE:\n` +
-        `📸 Số lượng: ${total} ảnh\n` +
-        `⏳ Ước tính: ~${estMinutes} phút\n` +
-        `🛡️ Cơ chế: Tải từng ảnh để đảm bảo KHÔNG MẤT FILE.\n` +
-        `⚠️ Yêu cầu: Giữ màn hình sáng và KHÔNG tắt trình duyệt.`
-    )) return;
-
-    // WakeLock (Giữ màn hình sáng)
-    let wake = null;
-    try { if ('wakeLock' in navigator) wake = await navigator.wakeLock.request('screen'); } catch {}
-
-    setIsMovingFiles(true);
-
-    try {
-        for (let i = 0; i < total; i++) {
-            if (cancelDownloadRef.current) {
-                showToast("Đã hủy tải xuống.", "info");
-                break;
-            }
-
-            const photo = filesToDownload[i];
-            
-            // Cập nhật tiến trình
-            setMoveProgress({ 
-                current: i + 1, 
-                total: total, 
-                fileName: `Đang xử lý: ${photo.name}` 
-            });
-
-            // Tạo Iframe ẩn (Cách này bypass được chặn popup trên Android tốt nhất)
-            const iframe = document.createElement("iframe");
-            iframe.style.display = "none";
-            
-            // Xử lý URL
-            let dlUrl = photo.originalUrl;
-            if (photo.isFromDrive && !dlUrl.includes("key=")) dlUrl += `&key=${driveApiKey}`;
-            // Thêm timestamp để tránh cache
-            const separator = dlUrl.includes("?") ? "&" : "?";
-            dlUrl += `${separator}t=${Date.now()}`; 
-            
-            iframe.src = dlUrl;
-            document.body.appendChild(iframe);
-
-            // --- TÍNH TOÁN DELAY ---
-            // iOS cần chờ lâu hơn Android
-            let delay = isiOS ? 4000 : 3000; 
-            // Nếu ảnh nặng (dựa trên sizeMB giả định), chờ thêm
-            const sizeMB = photo.sizeMB || 5; 
-            delay += sizeMB * 200; 
-            // Giới hạn max delay 10 giây
-            delay = Math.min(delay, 10000);
-
-            await new Promise(r => setTimeout(r, delay));
-
-            // Dọn dẹp
-            iframe.src = 'about:blank';
-            try { document.body.removeChild(iframe); } catch(e){}
-
-            // Nghỉ nhẹ giữa các file
-            await new Promise(r => setTimeout(r, 300));
-        }
-
-        if (!cancelDownloadRef.current) {
-            alert(`🎉 Đã gửi lệnh tải cho ${total} ảnh!\nHãy kiểm tra thanh thông báo hoặc thư mục Download.`);
-        }
-    } catch (err) {
-        showToast("Lỗi Mobile: " + err.message, "error");
-    } finally {
-        if (wake) try { await wake.release(); } catch {}
-        setIsMovingFiles(false);
-        setMoveProgress({ current: 0, total: 0, fileName: '' });
+    else {
+        alert(
+            "📱 THÔNG BÁO QUAN TRỌNG:\n\n" +
+            `Bạn đang chọn tải ${filesToDownload.length} ảnh.\n\n` +
+            "Để đảm bảo chất lượng và không bị lỗi mất file, chức năng tải hàng loạt CHỈ HỖ TRỢ TRÊN MÁY TÍNH (PC/Laptop).\n\n" +
+            "👉 Vui lòng mở web này trên máy tính để tải trọn bộ.\n" +
+            "👉 Hoặc tải thủ công từng tấm bằng cách bấm vào ảnh -> nút Tải xuống."
+        );
     }
 };
 
 
 
-			// [FIX LỖI CORS] Hàm tải 1 ảnh lẻ an toàn
+			// [CẬP NHẬT] Hàm tải 1 ảnh lẻ (Fix lỗi mở tab + tên file)
 const handleSingleDownload = useCallback((photo) => {
     if (!photo) return;
     
-    // Chặn click lan truyền
     try {
         showToast(`Đang bắt đầu tải: ${photo.name}...`, 'info');
         
-        // TRƯỜNG HỢP 1: File Local (Vừa upload xong, chưa F5)
+        // 1. NẾU LÀ FILE LOCAL (Vừa upload lên) -> Dùng FileSaver lưu luôn
         if (photo.originalFile) {
-            // File này nằm sẵn trong RAM, dùng saveAs được
             saveAs(photo.originalFile, photo.name);
             showToast(`✅ Đã lưu: ${photo.name}`, 'success');
             return;
         } 
 
-        // TRƯỜNG HỢP 2: File từ Link (Google Drive / Firebase)
-        // -> KHÔNG DÙNG FETCH (Sẽ bị lỗi CORS)
-        // -> DÙNG THẺ A (Trình duyệt tự xử lý)
-
+        // 2. NẾU LÀ LINK TỪ DRIVE
         let targetUrl = photo.originalUrl || photo.url;
         
-        // Thêm API Key nếu là link Drive trực tiếp để cấp quyền truy cập
+        // Thêm API Key
         if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) {
             targetUrl += `&key=${driveApiKey}`;
         }
         
-        // Thêm tham số timestamp để tránh cache
+        // Thêm timestamp
         const sep = targetUrl.includes("?") ? "&" : "?";
         targetUrl += `${sep}t=${Date.now()}`;
 
-        // TẠO THẺ A ẢO ĐỂ TẢI
-        const link = document.createElement('a');
-        link.href = targetUrl;
-        link.target = "_blank"; // Mở tab mới để tránh lỗi quay vòng
-        link.download = photo.name; // Gợi ý tên file (Drive có thể bỏ qua cái này, nhưng cứ để)
+        // --- [THAY ĐỔI QUAN TRỌNG] ---
         
-        document.body.appendChild(link);
-        link.click(); // Giả lập cú click chuột
-        document.body.removeChild(link); // Dọn dẹp
+        // Cách 1: Dùng iframe ẩn (Tốt nhất để không bị mở tab mới)
+        // Trình duyệt sẽ tự tải xuống nền.
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = targetUrl;
+        document.body.appendChild(iframe);
+        
+        // Dọn dẹp sau 60s (đủ thời gian để trình duyệt bắt link)
+        setTimeout(() => {
+            try { document.body.removeChild(iframe); } catch {}
+        }, 60000);
 
-        showToast(`✅ Đã gửi lệnh tải: ${photo.name}`, 'success');
+        showToast(`✅ Đã gửi lệnh tải: ${photo.name}. Vui lòng kiểm tra thư mục Download.`, 'success');
 
     } catch (error) {
         console.error(error);
