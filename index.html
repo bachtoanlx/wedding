@@ -815,46 +815,42 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             const [moveProgress, setMoveProgress] = useState({ current: 0, total: 0, fileName: '' });
 			const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 			const cancelDownloadRef = React.useRef(false);
-			
+//
+		
 			const handleSmartDownload = async (type) => {
     setShowDownloadMenu(false);
     cancelDownloadRef.current = false;
 
     // ============================
-    // 1. LỌC ẢNH (LOGIC CHUẨN XÁC THEO CHẾ ĐỘ XEM)
+    // 1. LỌC ẢNH (LOGIC CHUẨN XÁC)
     // ============================
     let filesToDownload = [];
     let locationName = "";
 
-    // BƯỚC 1: Xác định phạm vi ảnh (Scope) dựa trên chế độ xem hiện tại
+    // B1: Xác định phạm vi (Toàn bộ hay Folder hiện tại)
     let scopePhotos = [];
-    
-    // Kiểm tra xem người dùng đang đứng ở "Tất cả" hay "Một thư mục cụ thể"
     if (currentFolderId && currentFolderId.trim() !== "") {
-        // Đang xem một thư mục cụ thể (Ví dụ: Nhà Trai)
         const folder = driveFolders.find(f => f.id === currentFolderId);
         if (folder) {
             scopePhotos = photos.filter(p => p.folderName === folder.name);
             locationName = `thư mục "${folder.name}"`;
         } else {
-            scopePhotos = photos; // Fallback an toàn
+            scopePhotos = photos;
             locationName = "toàn bộ Album";
         }
     } else {
-        // Đang xem "Tất cả thư mục" -> Phạm vi là TOÀN BỘ ALBUM
         scopePhotos = photos;
         locationName = "toàn bộ Album";
     }
 
-    // BƯỚC 2: Lọc theo loại (Đã chọn hay Tất cả) từ phạm vi trên
+    // B2: Lọc theo loại (Đã chọn hay Tất cả)
     if (type === 'SELECTED') {
         filesToDownload = scopePhotos.filter(p => p.isSelected);
         locationName += " (Đã chọn)";
     } else {
-        filesToDownload = scopePhotos; // Tải tất cả trong phạm vi đang xem
+        filesToDownload = scopePhotos;
     }
 
-    // KIỂM TRA SỐ LƯỢNG
     if (filesToDownload.length === 0) {
         return showToast(`Không tìm thấy ảnh nào trong ${locationName}!`, "warning");
     }
@@ -862,9 +858,11 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|Opera Mini|Mobile/i.test(navigator.userAgent);
 
     // ============================
-    // PC — GIỮ NGUYÊN (Lưu Folder)
+    // PC — GIỮ NGUYÊN
     // ============================
     if (!isMobile && 'showDirectoryPicker' in window) {
+        // (Giữ nguyên đoạn code PC cũ của bạn ở đây)
+        // ... Code PC ...
         if (!window.confirm(`💻 PC: Bạn sắp tải ${filesToDownload.length} ảnh.\nPhạm vi: ${locationName}`)) return;
         setIsMovingFiles(true);
         try {
@@ -877,6 +875,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     let p = filesToDownload[i];
                     let url = p.originalUrl + (p.isFromDrive && !p.originalUrl.includes('key=') ? `&key=${driveApiKey}` : '');
                     const res = await fetch(url);
+                    if (!res.ok) throw new Error(res.status); // Check lỗi PC
                     const blob = await res.blob();
                     const safeName = p.name.replace(/[:\/\\?*|"><]/g, "_");
                     const safeFolder = (p.folderName || "Khac").replace(/[:\/\\?*|"><]/g, "_");
@@ -894,27 +893,30 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
     }
 
     // ============================
-    // MOBILE — TẢI TUẦN TỰ (AN TOÀN TUYỆT ĐỐI)
+    // MOBILE — CHẾ ĐỘ "KIỂM TOÁN VIÊN" (VERIFIED DOWNLOAD)
     // ============================
     
-    // Tính toán thời gian
-    const estimatedSeconds = filesToDownload.length * 2; 
-    let timeString = estimatedSeconds > 60 ? `~${(estimatedSeconds/60).toFixed(1)} phút` : `~${estimatedSeconds} giây`;
+    // Tính toán thời gian (Mỗi ảnh 3 giây để vừa tải vừa check)
+    const estimatedSeconds = filesToDownload.length * 3;
+    const estimatedMinutes = (estimatedSeconds / 60).toFixed(1);
 
-    let confirmMsg = `📱 MOBILE DOWNLOAD:\n`;
-    confirmMsg += `🎯 Đang xem: ${locationName}\n`; 
-    confirmMsg += `📸 Số lượng: ${filesToDownload.length} ảnh.\n`; // Số này bây giờ sẽ chuẩn 21
-    confirmMsg += `⏳ Thời gian: ${timeString}.\n`;
-    confirmMsg += `👉 Hệ thống sẽ tải LẦN LƯỢT từng tấm để đảm bảo đủ file.\n`;
-    confirmMsg += `⚠️ Vui lòng KHÔNG tắt màn hình.`;
+    let confirmMsg = `📱 CHẾ ĐỘ TẢI CÓ KIỂM TRA LỖI:\n`;
+    confirmMsg += `🎯 Nguồn: ${locationName}\n`; 
+    confirmMsg += `📸 Số lượng: ${filesToDownload.length} ảnh.\n`;
+    confirmMsg += `⏳ Thời gian: ~${estimatedMinutes} phút.\n`;
+    confirmMsg += `👉 Hệ thống sẽ TẢI VỀ BỘ NHỚ ĐỆM trước để đảm bảo ảnh không bị lỗi.\n`;
+    confirmMsg += `⚠️ Vui lòng GIỮ MÀN HÌNH SÁNG.`;
 
     if (!window.confirm(confirmMsg)) return;
 
-    // WakeLock
     let wakeLock = null;
     try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch {}
 
     setIsMovingFiles(true);
+    
+    // DANH SÁCH THEO DÕI KẾT QUẢ
+    let successList = [];
+    let failedList = [];
 
     try {
         for (let i = 0; i < filesToDownload.length; i++) {
@@ -928,36 +930,78 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             setMoveProgress({
                 current: i + 1,
                 total: filesToDownload.length,
-                fileName: `Đang tải: ${photo.name}`
+                fileName: `Đang kiểm tra & tải: ${photo.name}`
             });
 
-            // URL & Anti-cache
+            // 1. URL
             let url = photo.originalUrl;
             if (photo.isFromDrive && !url.includes("key=")) url += `&key=${driveApiKey}`;
-            url += `&v=${Date.now()}-${i}`; 
+            
+            try {
+                // 2. FETCH DATA (Tải về bộ nhớ đệm trước để kiểm tra)
+                const response = await fetch(url);
+                
+                // 3. KIỂM TRA MÃ TRẠNG THÁI (QUAN TRỌNG)
+                if (!response.ok) {
+                    // Nếu Google trả về lỗi (403, 429, 500...) -> Ném lỗi ngay
+                    throw new Error(`Google từ chối (Lỗi ${response.status})`);
+                }
 
-            // CHIẾN THUẬT: Iframe tuần tự
-            if (i === 0) {
-                const tab = window.open(url, "_blank");
-                if (tab) setTimeout(() => { try { tab.close() } catch{} }, 2500);
-            } else {
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.src = url;
-                document.body.appendChild(iframe);
-                setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 30000);
+                const blob = await response.blob();
+                
+                // Kiểm tra dung lượng file (tránh file rỗng 0KB)
+                if (blob.size < 100) {
+                    throw new Error("File tải về bị rỗng (0KB)");
+                }
+
+                // 4. LƯU FILE (Bắt buộc dùng cách này trên Android để save blob)
+                const blobUrl = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = photo.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Giải phóng bộ nhớ
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+                // Ghi nhận thành công
+                successList.push(photo.name);
+
+            } catch (error) {
+                console.error(`Lỗi tải file ${photo.name}:`, error);
+                // Ghi nhận thất bại
+                failedList.push(photo.name);
             }
 
-            // DELAY: 2 giây để đảm bảo file kịp về máy
-            await new Promise(r => setTimeout(r, 2000));
+            // 5. DELAY AN TOÀN (2.5 giây)
+            // Cần delay để Google không chặn IP vì fetch liên tục
+            await new Promise(r => setTimeout(r, 2500));
         }
 
+        // ============================
+        // BÁO CÁO KẾT QUẢ CUỐI CÙNG (REPORT)
+        // ============================
         if (!cancelDownloadRef.current) {
-            showToast(`🎉 Tải xong ${filesToDownload.length} ảnh!`, "success");
+            let reportMsg = "";
+            if (failedList.length === 0) {
+                reportMsg = `✅ HOÀN HẢO! Đã tải đủ ${successList.length}/${filesToDownload.length} ảnh.\nKiểm tra thư viện ngay.`;
+                showToast(reportMsg, "success");
+            } else {
+                // BÁO LỖI RÕ RÀNG
+                reportMsg = `⚠️ CẢNH BÁO: CHỈ TẢI ĐƯỢC ${successList.length}/${filesToDownload.length} ẢNH.\n`;
+                reportMsg += `❌ Có ${failedList.length} ảnh bị lỗi không tải được:\n`;
+                // Liệt kê tối đa 5 tên file lỗi để không quá dài
+                reportMsg += failedList.slice(0, 5).join(", ") + (failedList.length > 5 ? "..." : "");
+                reportMsg += `\n\n👉 Vui lòng thử tải lại các ảnh bị thiếu.`;
+                
+                alert(reportMsg); // Dùng Alert để khách bắt buộc phải đọc
+            }
         }
 
     } catch (err) {
-        showToast("Lỗi: " + err.message, "error");
+        showToast("Lỗi hệ thống: " + err.message, "error");
     } finally {
         if (wakeLock) try { await wakeLock.release(); } catch {}
         setIsMovingFiles(false);
