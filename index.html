@@ -207,89 +207,63 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 };
         // === PHOTOCARD & LIGHTBOX COMPONENTS ===
         // OPTIMIZED: Removed IntersectionObserver in favor of native lazy loading + onLoad state for performance
-        const PhotoCard = React.memo(({ photo, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments }) => {
-            // Sử dụng state đơn giản để fade-in ảnh khi đã load xong
+        // [SỬA 1]: Thêm onDownload vào danh sách props
+        const PhotoCard = React.memo(({ photo, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, onDownload }) => {
             const [isLoaded, setIsLoaded] = useState(false);
-            
-            // Local state for comment to prevent lagging while typing
             const [localComment, setLocalComment] = useState(photo.comments || "");
             
-            // Sync local comment if prop changes externally
-            useEffect(() => {
-                setLocalComment(photo.comments || "");
-            }, [photo.comments]);
+            useEffect(() => { setLocalComment(photo.comments || ""); }, [photo.comments]);
 
-            // Handle blur to save comment -> Performance optimization
             const handleCommentBlur = useCallback(() => {
-                if (localComment !== photo.comments) {
-                    onUpdateComment(photo.id, localComment);
-                }
+                if (localComment !== photo.comments) onUpdateComment(photo.id, localComment);
             }, [localComment, photo.comments, photo.id, onUpdateComment]);
 
-            // Optimized Click Handler
-            const handleCardClick = useCallback(() => {
-                 onOpenView(photo);
-            }, [photo, onOpenView]);
-
-            const handleToggleClick = useCallback((e) => {
-                 e.stopPropagation();
-                 onToggleSelect(photo.id);
-            }, [photo.id, onToggleSelect]);
+            const handleCardClick = useCallback(() => { onOpenView(photo); }, [photo, onOpenView]);
+            const handleToggleClick = useCallback((e) => { e.stopPropagation(); onToggleSelect(photo.id); }, [photo.id, onToggleSelect]);
 
             return (
             <div className={`relative group md:rounded-xl overflow-hidden bg-white md:shadow-sm transition-all duration-200 ${photo.isSelected ? 'ring-2 ring-pink-500 shadow-md' : 'md:hover:shadow-lg'}`}>
                 <div className="aspect-[3/4] md:aspect-[4/5] cursor-pointer overflow-hidden relative bg-gray-100" onClick={handleCardClick}>
-                    {/* Native Lazy Loading + Opacity Transition (Faster on iOS) */}
                     <div className={`w-full h-full bg-gray-100 transition-opacity duration-500 ${isLoaded ? 'opacity-0 absolute' : 'opacity-100'}`} />
-                    <img 
-                        src={photo.url} 
-                        alt="" 
-                        loading="lazy"
-                        onLoad={() => setIsLoaded(true)}
-                        className={`w-full h-full object-cover transition-all duration-500 md:group-hover:scale-105 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-                        style={{ transform: 'translateZ(0)' }} 
-                    />
-                    
-                    {/* Overlay: Simple gradient */}
+                    <img src={photo.url} alt="" loading="lazy" decoding="async" onLoad={() => setIsLoaded(true)} className={`w-full h-full object-cover transition-all duration-500 md:group-hover:scale-105 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} style={{ transform: 'translateZ(0)' }} />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
 
-                {/* Controls: Solid White Background for performance and clean look */}
                 <div className="absolute md:translate-y-2 md:group-hover:translate-y-0 bottom-0 left-0 right-0 p-3 transition-transform duration-300 bg-white/95 border-t border-gray-100">
+                    {/* [SỬA 2]: Gom nút Tim và nút Download vào 1 hàng */}
                     <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-medium text-gray-700 truncate max-w-[120px]">{photo.name}</span>
-                        {/* [ĐÃ SỬA] NÚT TIM TO HƠN - DỄ BẤM HƠN TRÊN MOBILE */}
-						<button 
-							onClick={handleToggleClick} 
-							// Thay đổi chính: Thêm 'w-11 h-11 flex items-center justify-center' để tạo vùng bấm chuẩn 44px
-							// Thêm '-mr-2' để căn lề phải đẹp hơn khi nút to ra
-							className={`w-11 h-11 flex items-center justify-center -mr-2 rounded-full transition-colors duration-200 ${photo.isSelected ? 'bg-pink-500 text-white shadow-md' : 'bg-transparent text-gray-400 hover:bg-gray-100'}`}
-						>
-							{/* Tăng size icon từ 18 lên 22 cho cân đối */}
-							{viewMode === 'CLIENT' ? <Icon name="heart" size={22} fill={photo.isSelected ? "currentColor" : "none"} /> : <Icon name="checkCircle" size={22} />}
-						</button>
+                        <span className="text-xs font-medium text-gray-700 truncate flex-1 mr-2">{photo.name}</span>
+                        
+                        <div className="flex items-center gap-1">
+                            {/* Nút Tải Xuống Mới */}
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDownload(photo); }}
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                                title="Tải ảnh này"
+                            >
+                                <Icon name="download" size={16} />
+                            </button>
+
+                            {/* Nút Thả Tim Cũ */}
+                            <button 
+                                onClick={handleToggleClick} 
+                                className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors duration-200 ${photo.isSelected ? 'bg-pink-500 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                            >
+                                {viewMode === 'CLIENT' ? <Icon name="heart" size={16} fill={photo.isSelected ? "currentColor" : "none"} /> : <Icon name="checkCircle" size={16} />}
+                            </button>
+                        </div>
                     </div>
 
                     {(photo.isSelected || photo.comments) && (
                         <div className="relative">
-                            <div className={`flex items-center gap-2 text-gray-500 mb-1 ${
-                                viewMode === 'CLIENT' && !photo.comments && 'hidden'
-                            }`}>
+                            <div className={`flex items-center gap-2 text-gray-500 mb-1 ${viewMode === 'CLIENT' && !photo.comments && 'hidden'}`}>
                                 <Icon name="message" size={12} />
                                 <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">Yêu cầu chỉnh sửa</span>
                             </div>
                             {viewMode === 'CLIENT' ? (
                                 allowComments ? (
-                                    <textarea 
-                                        value={localComment} 
-                                        onChange={(e) => setLocalComment(e.target.value)} 
-                                        onBlur={handleCommentBlur}
-                                        placeholder="Ví dụ: Xóa rác, bóp eo..." 
-                                        className="w-full bg-gray-50 text-xs text-gray-800 p-2 rounded-lg border border-gray-200 focus:border-pink-500 focus:bg-white focus:outline-none resize-none h-16 transition-colors" 
-                                    />
-                                ) : photo.comments ? (
-                                    <div className="w-full bg-gray-50 text-xs text-gray-600 p-2 rounded border border-gray-200 min-h-[40px] italic opacity-80">{photo.comments}</div>
-                                ) : null
+                                    <textarea value={localComment} onChange={(e) => setLocalComment(e.target.value)} onBlur={handleCommentBlur} placeholder="Ví dụ: Xóa rác, bóp eo..." className="w-full bg-gray-50 text-xs text-gray-800 p-2 rounded-lg border border-gray-200 focus:border-pink-500 focus:bg-white focus:outline-none resize-none h-16 transition-colors" />
+                                ) : photo.comments ? <div className="w-full bg-gray-50 text-xs text-gray-600 p-2 rounded border border-gray-200 min-h-[40px] italic opacity-80">{photo.comments}</div> : null
                             ) : (
                                 <div className="w-full bg-gray-50 text-xs text-gray-600 p-2 rounded border border-gray-200 min-h-[40px] italic">{photo.comments || "Không có ghi chú."}</div>
                             )}
@@ -297,21 +271,14 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                     )}
                 </div>
                 
-                {photo.isSelected && (
-                    <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md z-10">ĐÃ CHỌN</div>
-                )}
+                {photo.isSelected && <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md z-10">ĐÃ CHỌN</div>}
             </div>
             );
-        }, (prevProps, nextProps) => {
-            // Optimization: Only re-render if specific props change
-            return prevProps.photo === nextProps.photo && 
-                   prevProps.viewMode === nextProps.viewMode &&
-                   prevProps.allowComments === nextProps.allowComments;
-        });
+        }, (prev, next) => prev.photo === next.photo && prev.viewMode === next.viewMode && prev.allowComments === next.allowComments);
 
         // LIGHTBOX REDESIGN: MODERN LIGHT THEME
 // === LIGHTBOX (FINAL: SD/HD TRONG SUỐT + GẦN NÚT CHỌN) ===
-        const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate }) => {
+        const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate, onDownload }) => {
             if (!photo) return null;
             
             const [scale, setScale] = useState(1);
@@ -504,6 +471,13 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                         </span>
                     </div>
                     
+					<button 
+						onClick={(e) => { e.stopPropagation(); onDownload(currentPhoto); }} 
+						className={`absolute top-4 right-16 md:top-6 md:right-20 text-gray-500 hover:text-blue-600 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}
+						title="Tải ảnh gốc"
+					>
+						<Icon name="download" size={24} />
+					</button>
                     <button 
                         onClick={onClose} 
                         className={`absolute top-4 right-4 md:top-6 md:right-6 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}
@@ -683,7 +657,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
         });
 // === VIRTUAL GRID COMPONENT (ĐÃ TỐI ƯU CHO IPHONE) ===
         // === VIRTUAL GRID COMPONENT (FIX LỖI HOOK #310) ===
-        const VirtualPhotoGrid = React.memo(({ photos, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments }) => {
+        const VirtualPhotoGrid = React.memo(({ photos, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, onDownload }) => {
             // 1. KHAI BÁO TẤT CẢ HOOK TRƯỚC (KHÔNG ĐƯỢC RETURN Ở ĐÂY)
             const containerRef = React.useRef(null);
             const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -714,8 +688,16 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 
             // 2. GỌI CÁC HOOK USEMEMO/USECALLBACK (BẮT BUỘC PHẢI GỌI TRƯỚC KHI RETURN)
             const itemData = useMemo(() => ({
-                photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth
-            }), [photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth]);
+                photos, 
+                columnCount, 
+                viewMode, 
+                onToggleSelect, 
+                onUpdateComment, 
+                onOpenView, 
+                allowComments, 
+                itemWidth,
+                onDownload: onDownload // <--- ĐÃ SỬA: Dùng prop truyền vào
+            }), [photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth, onDownload]);
 
             const Cell = useCallback(({ columnIndex, rowIndex, style, data }) => {
                 const idx = rowIndex * data.columnCount + columnIndex;
@@ -740,7 +722,8 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
                             onToggleSelect={data.onToggleSelect} 
                             onUpdateComment={data.onUpdateComment} 
                             onOpenView={data.onOpenView} 
-                            allowComments={data.allowComments} 
+                            allowComments={data.allowComments}
+                            onDownload={data.onDownload} // <--- THÊM DÒNG NÀY
                         />
                     </div>
                 );
@@ -832,170 +815,216 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
             const [moveProgress, setMoveProgress] = useState({ current: 0, total: 0, fileName: '' });
 			const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 			const cancelDownloadRef = React.useRef(false);
-			// [CẬP NHẬT] Hàm xử lý Download (Fix lỗi chặn Pop-up + Logic lọc thông minh)
-// [FIX FINAL] Hàm tải file: Giữ kết nối Iframe để đảm bảo file về máy
-// [NÂNG CẤP] Hàm tải ảnh thông minh: Hỗ trợ Folder con + Auto ZIP
-const handleSmartDownload = async (type) => {
+			
+			const handleSmartDownload = async (type) => {
     setShowDownloadMenu(false);
     cancelDownloadRef.current = false;
 
-    // 1. LỌC DANH SÁCH ẢNH CẦN TẢI
+    // ============================
+    // 1. Lọc ảnh
+    // ============================
     let filesToDownload = [];
-    let modeDescription = "";
-
-    // Logic lọc ảnh (giữ nguyên logic lọc thông minh của bạn)
     if (type === 'SELECTED') {
-        let selectedSource = photos.filter(p => p.isSelected);
+        let selected = photos.filter(p => p.isSelected);
         if (currentFolderId) {
-            const currentFolder = driveFolders.find(f => f.id === currentFolderId);
-            if (currentFolder) {
-                filesToDownload = selectedSource.filter(p => p.folderName === currentFolder.name);
-                modeDescription = `đã chọn trong mục ${currentFolder.name}`;
-            }
-        } else {
-            filesToDownload = selectedSource;
-            modeDescription = "đã chọn (toàn bộ album)";
-        }
+            const folder = driveFolders.find(f => f.id === currentFolderId);
+            filesToDownload = selected.filter(p => p.folderName === folder.name);
+        } else filesToDownload = selected;
     } else if (type === 'ALL') {
         if (currentFolderId) {
-            const currentFolder = driveFolders.find(f => f.id === currentFolderId);
-            if (currentFolder) {
-                filesToDownload = photos.filter(p => p.folderName === currentFolder.name);
-                modeDescription = `tất cả trong mục ${currentFolder.name}`;
-            }
-        } else {
-            filesToDownload = photos;
-            modeDescription = "toàn bộ Album";
-        }
+            const folder = driveFolders.find(f => f.id === currentFolderId);
+            filesToDownload = photos.filter(p => p.folderName === folder.name);
+        } else filesToDownload = photos;
     }
 
-    if (filesToDownload.length === 0) {
-        showToast(`Không tìm thấy ảnh ${type === 'SELECTED' ? 'đã chọn' : ''} nào!`, "warning");
+    if (filesToDownload.length === 0) return showToast("Không có ảnh nào để tải!", "warning");
+
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|Opera Mini|Mobile/i.test(navigator.userAgent);
+
+    // ============================
+    // PC — GIỮ NGUYÊN (Logic File System Access API)
+    // ============================
+    if (!isMobile && 'showDirectoryPicker' in window) {
+        if (!window.confirm(`💻 CHẾ ĐỘ PC:\nBạn sắp tải ${filesToDownload.length} ảnh.`)) return;
+        setIsMovingFiles(true);
+        try {
+            const rootHandle = await window.showDirectoryPicker();
+            let successCount = 0;
+            for (let i = 0; i < filesToDownload.length; i++) {
+                if (cancelDownloadRef.current) break;
+                setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: filesToDownload[i].name });
+                try {
+                    let p = filesToDownload[i];
+                    let url = p.originalUrl + (p.isFromDrive && !p.originalUrl.includes('key=') ? `&key=${driveApiKey}` : '');
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    // Fix lỗi tên file chứa ký tự đặc biệt
+                    const safeName = p.name.replace(/[:\/\\?*|"><]/g, "_");
+                    const safeFolder = (p.folderName || "Khac").replace(/[:\/\\?*|"><]/g, "_");
+                    
+                    const dirHandle = await rootHandle.getDirectoryHandle(safeFolder, {create:true});
+                    const fileHandle = await dirHandle.getFileHandle(safeName, {create:true});
+                    const w = await fileHandle.createWritable();
+                    await w.write(blob); await w.close();
+                    successCount++;
+                } catch(e){ console.error(e) }
+            }
+            if(successCount>0) showToast(`✅ Đã lưu ${successCount} ảnh!`, 'success');
+        } catch(e){ if(e.name!=='AbortError') showToast("Lỗi PC: "+e.message,"error"); }
+        finally { setIsMovingFiles(false); setMoveProgress({ current: 0, total: 0, fileName: '' }); }
         return;
     }
 
-    // Xác nhận với người dùng
-    if (!window.confirm(`Bạn sắp tải xuống ${filesToDownload.length} ảnh (${modeDescription}).\n\nQuá trình này sẽ lấy ảnh gốc chất lượng cao nhất, vui lòng chờ đợi.`)) return;
+    // ============================
+    // MOBILE — Batch 2–4 ảnh/lần, Adaptive Delay
+    // ============================
+    const BATCH_MIN = 2;
+    const BATCH_MAX = 4; // Tăng lên 4 để nhanh hơn chút nếu mạng khỏe
+
+    // Tạo batch ngẫu nhiên kích thước từ 2-4 ảnh để giống người hơn
+    let batches = [];
+    let i = 0;
+    while (i < filesToDownload.length) {
+        let size = Math.floor(Math.random() * (BATCH_MAX - BATCH_MIN + 1)) + BATCH_MIN;
+        batches.push(filesToDownload.slice(i, i + size));
+        i += size;
+    }
+
+    // WakeLock chống tắt màn hình
+    let wakeLock = null;
+    try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch {}
 
     setIsMovingFiles(true);
-    setMoveProgress({ current: 0, total: filesToDownload.length, fileName: 'Đang khởi tạo...' });
 
-    // 2. HÀM HỖ TRỢ: LẤY BLOB TỪ URL (Xử lý CORS & Fallback)
-    const fetchImageBlob = async (photo) => {
-        try {
-            // Ưu tiên 1: File gốc local (nếu vừa upload xong)
-            if (photo.originalFile) return photo.originalFile;
-
-            // Ưu tiên 2: Link gốc Google Drive (Dùng API Key để tải binary)
-            // Lưu ý: Cần đảm bảo API Key có quyền truy cập
-            let targetUrl = photo.originalUrl; 
-            if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) {
-                 targetUrl += `&key=${driveApiKey}`; // Bổ sung key nếu thiếu
-            }
-            
-            // Thử tải file gốc
-            let response = await fetch(targetUrl);
-            if (!response.ok) throw new Error('Link gốc lỗi');
-            return await response.blob();
-
-        } catch (e) {
-            console.warn(`Không tải được gốc ${photo.name}, thử tải preview...`);
-            // Ưu tiên 3: Fallback sang link hiển thị (thường là thumbnail lớn)
-            // Proxy qua cors-anywhere nếu cần, hoặc dùng trực tiếp nếu cùng domain
-            const response = await fetch(photo.url);
-            return await response.blob();
-        }
-    };
-
-    // 3. XỬ LÝ TẢI VỀ (CHIA 2 TRƯỜNG HỢP)
     try {
-        // TRƯỜNG HỢP A: TRÌNH DUYỆT HIỆN ĐẠI (Chrome/Edge Desktop) - LƯU TRỰC TIẾP VÀO FOLDER
-        if ('showDirectoryPicker' in window) {
-            const rootHandle = await window.showDirectoryPicker();
-            let successCount = 0;
-            let failCount = 0;
+        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+            if (cancelDownloadRef.current) break;
+            const batch = batches[batchIndex];
 
-            for (let i = 0; i < filesToDownload.length; i++) {
-                if (cancelDownloadRef.current) break;
-                const photo = filesToDownload[i];
-                
-                // Cập nhật thanh tiến trình
-                setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: photo.name });
-
-                try {
-                    // a. Tải dữ liệu ảnh về bộ nhớ
-                    const blob = await fetchImageBlob(photo);
-
-                    // b. Xác định thư mục con (Dựa trên folderName của ảnh)
-                    // Nếu không có folderName, cho vào thư mục gốc "Misc"
-                    const safeFolderName = (photo.folderName || "Khac").replace(/[^a-zA-Z0-9 \-_]/g, '');
-                    
-                    // c. Tạo hoặc lấy Handle của thư mục con
-                    const folderHandle = await rootHandle.getDirectoryHandle(safeFolderName, { create: true });
-
-                    // d. Tạo file trong thư mục con đó
-                    const fileHandle = await folderHandle.getFileHandle(photo.name, { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                    
-                    successCount++;
-                } catch (err) {
-                    console.error(`Lỗi lưu ${photo.name}:`, err);
-                    failCount++;
-                }
+            // --- 1. Tính toán Delay thông minh ---
+            // Lấy tốc độ mạng (nếu không hỗ trợ thì mặc định 4G trung bình ~2.5MB/s)
+            let estimatedSpeedMBs = 2.5; 
+            if (navigator.connection && navigator.connection.downlink) {
+                // downlink đơn vị là Mbps, chia 8 để ra MB/s
+                estimatedSpeedMBs = Math.max(0.5, navigator.connection.downlink / 8); 
             }
             
-            if (successCount > 0) {
-                showToast(`✅ Hoàn tất! Đã lưu ${successCount} ảnh vào máy tính.`, 'success');
+            // Giả định mỗi ảnh ~5MB (nếu không có sizeMB)
+            let batchSizeMB = batch.reduce((sum, p) => sum + (p.sizeMB || 5), 0); 
+            
+            // Thời gian tải lý thuyết + 30% buffer
+            let networkDelay = (batchSizeMB / estimatedSpeedMBs) * 1.3; 
+            
+            // Đảm bảo tối thiểu 1.5s mỗi ảnh để không quá nhanh
+            let minDelay = batch.length * 1.5; 
+            
+            let finalWaitTime = Math.max(networkDelay, minDelay) * 1000; // Đổi ra ms
+
+            setMoveProgress({
+                current: batchIndex + 1,
+                total: batches.length,
+                fileName: `Đang tải gói ${batchIndex + 1}/${batches.length} (${batch.length} ảnh)...`
+            });
+
+            // --- 2. Thực hiện tải (Mở tab) ---
+            for (let k = 0; k < batch.length; k++) {
+                const photo = batch[k];
+                let url = photo.originalUrl;
+                if (photo.isFromDrive && !url.includes("key=")) url += `&key=${driveApiKey}`;
+                
+                // Anti-bot param
+                url += `&anti_bot=${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+                const tab = window.open(url, "_blank");
+                
+                // Xử lý Fallback nếu popup bị chặn (Dùng iframe ẩn thay vì chuyển trang)
+                if (!tab) {
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = url;
+                    document.body.appendChild(iframe);
+                    // Xóa iframe sau 60s
+                    setTimeout(() => document.body.removeChild(iframe), 60000);
+                } else {
+                    // Đóng tab nhanh hơn chút (1.5s) để dọn rác
+                    setTimeout(() => { try { tab.close(); } catch {} }, 1500);
+                }
+                
+                // Nghỉ nhỏ giữa các ảnh trong cùng 1 batch (tránh mở 4 tab cùng 1 mili giây)
+                await new Promise(r => setTimeout(r, 300)); 
             }
 
-        } 
-        // TRƯỜNG HỢP B: TRÌNH DUYỆT KHÁC (Safari/Mobile) - DÙNG JSZIP (NÉN FILE)
-        else {
-            showToast("Đang nén ảnh để tải về (Chế độ tương thích)...", "info");
-            const zip = new JSZip();
-            let successCount = 0;
+            // --- 3. Nghỉ giải lao (Cool Down) ---
+            // Nếu không phải gói cuối, nghỉ ngẫu nhiên từ 5-8 giây (đã giảm xuống chút cho nhanh hơn)
+            if (batchIndex < batches.length - 1) {
+                // Delay tính toán ở trên + Random ngẫu nhiên
+                let coolDown = finalWaitTime + (Math.random() * 2000); 
+                
+                // Giới hạn max delay là 10 giây để khách không chờ quá lâu
+                coolDown = Math.min(coolDown, 10000); 
 
-            for (let i = 0; i < filesToDownload.length; i++) {
-                if (cancelDownloadRef.current) break;
-                const photo = filesToDownload[i];
-                setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: `Đang nén: ${photo.name}` });
-
-                try {
-                    const blob = await fetchImageBlob(photo);
-                    const safeFolderName = (photo.folderName || "Khac").replace(/[^a-zA-Z0-9 \-_]/g, '');
-                    
-                    // Thêm vào file ZIP theo cấu trúc folder
-                    zip.folder(safeFolderName).file(photo.name, blob);
-                    successCount++;
-                } catch (err) {
-                    console.error(`Lỗi nén ${photo.name}:`, err);
+                for (let t = Math.ceil(coolDown / 1000); t > 0; t--) {
+                    if (cancelDownloadRef.current) break;
+                    setMoveProgress({
+                        current: batchIndex + 1,
+                        total: batches.length,
+                        fileName: `☕ Đợi mạng ổn định... ${t}s`
+                    });
+                    await new Promise(r => setTimeout(r, 1000));
                 }
             }
+        }
 
-            if (successCount > 0 && !cancelDownloadRef.current) {
-                setMoveProgress({ current: 100, total: 100, fileName: 'Đang tạo file Zip cuối cùng...' });
-                
-                // Tạo file zip và tải xuống
-                const content = await zip.generateAsync({ type: "blob" });
-                const zipName = `${albumName.replace(/[^a-zA-Z0-9]/g, '_')}_Download.zip`;
-                saveAs(content, zipName); // Dùng thư viện FileSaver.js đã có sẵn
-                
-                showToast(`✅ Đã tải file nén (.zip) chứa ${successCount} ảnh!`, 'success');
-            }
+        if(!cancelDownloadRef.current) {
+            showToast("🎉 Tải xong! Hãy kiểm tra thư viện ảnh.", "success");
+        } else {
+            showToast("Đã dừng tải xuống.", "info");
         }
+
     } catch (err) {
-        if (err.name !== 'AbortError') {
-            console.error(err);
-            showToast("Có lỗi xảy ra: " + err.message, "error");
-        }
+        showToast("Lỗi: " + err.message, "error");
     } finally {
+        if (wakeLock) try { await wakeLock.release(); } catch {}
         setIsMovingFiles(false);
-        setMoveProgress({ current: 0, total: 0, fileName: '' });
+        setMoveProgress({ current: 0, total: 0, fileName: "" });
     }
 };
-		
+
+			// --- [MỚI] HÀM TẢI 1 ẢNH LẺ ---
+            const handleSingleDownload = useCallback(async (photo) => {
+                if (!photo) return;
+                
+                // Chặn click lan truyền nếu bấm từ lưới
+                try {
+                    showToast(`Đang chuẩn bị tải: ${photo.name}...`, 'info');
+                    
+                    let blob;
+                    // 1. Ưu tiên file gốc local
+                    if (photo.originalFile) {
+                        blob = photo.originalFile;
+                    } 
+                    // 2. Tải từ URL (Drive hoặc Link)
+                    else {
+                        let targetUrl = photo.originalUrl || photo.url;
+                        // Thêm API Key nếu là link Drive trực tiếp
+                        if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) {
+                            targetUrl += `&key=${driveApiKey}`;
+                        }
+                        
+                        const response = await fetch(targetUrl);
+                        if (!response.ok) throw new Error("Lỗi tải file");
+                        blob = await response.blob();
+                    }
+
+                    // Dùng thư viện FileSaver (saveAs) đã có sẵn trong code của bạn
+                    saveAs(blob, photo.name);
+                    showToast(`✅ Đã tải: ${photo.name}`, 'success');
+
+                } catch (error) {
+                    console.error(error);
+                    showToast("❌ Lỗi khi tải ảnh", "error");
+                }
+            }, [driveApiKey]);
 
             const [isInitialized, setIsInitialized] = useState(false); 
             const [showPasscodeModal, setShowPasscodeModal] = useState(true); 
@@ -2086,13 +2115,14 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                         <p className="text-lg font-light">Chưa có ảnh nào</p>
                                     </div>
                                 ) : (
-                                    <VirtualPhotoGrid
+									<VirtualPhotoGrid
                                         photos={filteredPhotos}
                                         viewMode={viewMode}
                                         onToggleSelect={toggleSelect}
                                         onUpdateComment={updateComment}
                                         onOpenView={handlePhotoChange}
                                         allowComments={allowComments}
+                                        onDownload={handleSingleDownload} // <--- THÊM DÒNG NÀY
                                     />
                                 )}
                             </main>
@@ -2104,6 +2134,7 @@ const handlePasscodeAccess = async (inputPasscode) => {
                                 onToggleSelect={toggleSelect} 
                                 currentIndex={selectedPhotoIndex}
                                 onNavigate={handlePhotoChange}
+								onDownload={handleSingleDownload}
                             />
                         </div>
                     </>
