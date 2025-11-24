@@ -233,7 +233,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
         </div>
     );
 };
-        // === PHOTOCARD (ĐÃ XÓA LỚP PHỦ ĐEN ÁM ẢNH) ===
+        // === PHOTOCARD (ĐÃ NÂNG CẤP CHẤT LƯỢNG ẢNH THÔNG MINH) ===
 const PhotoCard = React.memo(({ 
     photo, 
     viewMode, 
@@ -242,7 +242,8 @@ const PhotoCard = React.memo(({
     onOpenView, 
     allowComments, 
     onDownload, 
-    downloadedIds 
+    downloadedIds,
+    index // <--- [MỚI] Nhận thêm số thứ tự ảnh
 }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [localComment, setLocalComment] = useState(photo.comments || "");
@@ -258,18 +259,40 @@ const PhotoCard = React.memo(({
 
     const isDownloaded = downloadedIds && downloadedIds.has(photo.id);
 
+    // === [LOGIC MỚI] TỐI ƯU CHẤT LƯỢNG ẢNH ===
+    // 1. Xác định đây có phải là nhóm ảnh đầu tiên không (Top 12 ảnh ~ 3 hàng trên PC hoặc 12 hàng trên Mobile)
+    const isPriority = index < 12;
+
+    // 2. Tính toán URL chất lượng cao hơn
+    // - Nếu là Top đầu: Dùng w800 (Rất nét, ưu tiên hiển thị ngay)
+    // - Nếu là ảnh dưới: Dùng w500 (Nét hơn w300 cũ, nhưng vẫn nhẹ để cuộn mượt)
+    // Lưu ý: Logic này thay thế 'sz=w300' có sẵn trong URL từ Firebase
+    // === [LOGIC MỚI - ĐÃ ĐIỀU CHỈNH THEO Ý BẠN] ===
+    const displayUrl = useMemo(() => {
+        if (!photo.url) return "";
+        
+        // isPriority (Top 12 ảnh): Dùng w800 để nét ngay lập tức khi mở web.
+        // Các ảnh sau: CŨNG DÙNG w800 luôn (thay vì w500) để khi khách cuộn xuống là thấy ảnh nét.
+        // Lưu ý: w800 sẽ tốn dung lượng 4G hơn w500 một chút, nhưng đẹp hơn hẳn.
+        
+        const targetSize = 'w800'; // <--- ĐỔI HẾT THÀNH w800 HOẶC w600
+        
+        return photo.url.replace(/sz=[ws]\d+/, `sz=${targetSize}`).replace(/=w\d+/, `=${targetSize}`);
+    }, [photo.url]);
+
     return (
     <div className={`relative group md:rounded-xl overflow-hidden bg-white md:shadow-sm transition-all duration-200 ${photo.isSelected ? 'ring-2 ring-pink-500 shadow-md' : 'md:hover:shadow-lg'}`}>
-        {/* Phần hiển thị ảnh */}
         <div className="aspect-[3/4] md:aspect-[4/5] cursor-pointer overflow-hidden relative bg-gray-100" onClick={handleCardClick}>
-            {/* Placeholder màu xám khi đang tải */}
             <div className={`w-full h-full bg-gray-100 transition-opacity duration-500 ${isLoaded ? 'opacity-0 absolute' : 'opacity-100'}`} />
             
-            {/* Ảnh chính - Đã xóa lớp gradient đen phủ lên trên */}
+            {/* [SỬA] Thẻ IMG với thuộc tính ưu tiên tải */}
             <img 
-                src={photo.url} 
+                src={displayUrl} 
                 alt="" 
-                loading="lazy" 
+                // Nếu là ảnh ưu tiên: Tải ngay (eager). Ảnh dưới: Tải lười (lazy)
+                loading={isPriority ? "eager" : "lazy"} 
+                // Báo trình duyệt ưu tiên băng thông cho ảnh đầu
+                fetchPriority={isPriority ? "high" : "auto"}
                 decoding="async" 
                 onLoad={() => setIsLoaded(true)} 
                 className={`w-full h-full object-cover transition-all duration-500 md:group-hover:scale-105 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
@@ -277,29 +300,21 @@ const PhotoCard = React.memo(({
             />
         </div>
 
-        {/* Phần thông tin bên dưới */}
+        {/* ... (Phần thông tin bên dưới giữ nguyên không đổi) ... */}
         <div className="absolute md:translate-y-2 md:group-hover:translate-y-0 bottom-0 left-0 right-0 p-3 transition-transform duration-300 bg-white/95 border-t border-gray-100">
             <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-medium text-gray-700 truncate flex-1 mr-2">{photo.name}</span>
-                
                 <div className="flex items-center gap-1">
-                    {/* Nút Tải Xuống */}
                     <button 
                         onClick={(e) => { e.stopPropagation(); onDownload(photo); }}
-                        className={`w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${
-                            isDownloaded 
-                            ? 'bg-green-100 text-green-600 ring-1 ring-green-300 shadow-sm' 
-                            : 'bg-gray-50 text-gray-400 hover:bg-blue-100 hover:text-blue-600'
-                        }`}
+                        className={`w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${isDownloaded ? 'bg-green-100 text-green-600 ring-1 ring-green-300 shadow-sm' : 'bg-gray-50 text-gray-400 hover:bg-blue-100 hover:text-blue-600'}`}
                         title={isDownloaded ? "Đã tải về (Tải lại)" : "Tải ảnh này"}
                     >
                         <Icon name={isDownloaded ? "check" : "download"} size={16} strokeWidth={isDownloaded ? 3 : 2} />
                     </button>
-
-                    {/* Nút Thả Tim */}
                     <button 
                         onClick={handleToggleClick} 
-                        className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors duration-200 ${photo.isSelected ? 'bg-pink-500 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                        className={`w-8 h-8 flex items-center justify-center rounded-colors duration-200 ${photo.isSelected ? 'bg-pink-500 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                     >
                         {viewMode === 'CLIENT' ? <Icon name="heart" size={16} fill={photo.isSelected ? "currentColor" : "none"} /> : <Icon name="checkCircle" size={16} />}
                     </button>
@@ -326,7 +341,7 @@ const PhotoCard = React.memo(({
         {photo.isSelected && <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md z-10">ĐÃ CHỌN</div>}
     </div>
     );
-}, (prev, next) => prev.photo === next.photo && prev.viewMode === next.viewMode && prev.allowComments === next.allowComments && prev.downloadedIds === next.downloadedIds);
+}, (prev, next) => prev.photo === next.photo && prev.viewMode === next.viewMode && prev.allowComments === next.allowComments && prev.downloadedIds === next.downloadedIds && prev.index === next.index); // Nhớ thêm prev.index vào đây
 
         // LIGHTBOX REDESIGN: MODERN LIGHT THEME
 // === LIGHTBOX (FINAL: SD/HD TRONG SUỐT + GẦN NÚT CHỌN) ===
@@ -759,12 +774,12 @@ const VirtualPhotoGrid = React.memo(({
         photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth, onDownload, downloadedIds 
     }), [photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth, onDownload, downloadedIds]);
 
-    // Cell giữ nguyên
+    // Cell giữ nguyên logic, chỉ thêm prop index={idx}
     const Cell = useCallback(({ columnIndex, rowIndex, style, data }) => {
         const idx = rowIndex * data.columnCount + columnIndex;
         if (idx >= data.photos.length) return null;
         const photo = data.photos[idx];
-        const gap = 12; // Tăng khoảng cách ảnh một chút cho thoáng
+        const gap = 12; 
         const itemStyle = {
             ...style,
             width: style.width - gap,
@@ -775,7 +790,15 @@ const VirtualPhotoGrid = React.memo(({
         return (
             <div style={itemStyle}>
                 <PhotoCard 
-                    photo={photo} viewMode={data.viewMode} onToggleSelect={data.onToggleSelect} onUpdateComment={data.onUpdateComment} onOpenView={data.onOpenView} allowComments={data.allowComments} onDownload={data.onDownload} downloadedIds={data.downloadedIds} 
+                    photo={photo} 
+                    viewMode={data.viewMode} 
+                    onToggleSelect={data.onToggleSelect} 
+                    onUpdateComment={data.onUpdateComment} 
+                    onOpenView={data.onOpenView} 
+                    allowComments={data.allowComments} 
+                    onDownload={data.onDownload} 
+                    downloadedIds={data.downloadedIds}
+                    index={idx}  // <--- [MỚI] QUAN TRỌNG: Truyền số thứ tự vào
                 />
             </div>
         );
