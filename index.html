@@ -335,7 +335,8 @@ const PhotoCard = React.memo(({
             }, [goToPrev, goToNext, onClose]);
             
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black" onClick={onClose} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{ touchAction: 'none' }}>
+                // Thêm h-screen h-[100dvh] để ép chiều cao linh động
+<div className="fixed inset-0 h-screen h-[100dvh] z-50 flex items-center justify-center overflow-hidden bg-black" onClick={onClose} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{ touchAction: 'none' }}>
                     <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
                         <img src={currentPhoto.url} className="w-full h-full object-cover blur-3xl scale-150 opacity-60 transition-all duration-500 ease-linear" alt="" />
                         <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
@@ -821,7 +822,7 @@ const PhotoCard = React.memo(({
             }, [filteredPhotos]);
 
             return (
-                <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden">
+                <div className="flex h-screen h-[100dvh] bg-gray-50 text-gray-900 overflow-hidden">
                     {notification && (
                         <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 border ${notification.type === 'success' ? 'bg-green-50 border-green-500 text-green-700' : notification.type === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-yellow-50 border-yellow-500 text-yellow-700'}`}>
                             {notification.type === 'success' ? <Icon name="check" size={18} /> : <Icon name="alert" size={18} />} <span className="text-sm font-medium">{notification.message}</span>
