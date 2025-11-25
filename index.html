@@ -5,10 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LensFlow - Client Proofing</title>
     
+    <link rel="manifest" href='data:application/manifest+json,{
+      "name": "LensFlow Album",
+      "short_name": "LensFlow",
+      "start_url": ".",
+      "display": "fullscreen",
+      "background_color": "#fafaf9",
+      "theme_color": "#fafaf9",
+      "orientation": "any"
+    }' />
+    <meta name="mobile-web-app-capable" content="yes">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#fafaf9">
-    <meta name="mobile-web-app-capable" content="yes">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -37,6 +47,7 @@
           background-color: #fafaf9; color: #292524; margin: 0;
           touch-action: manipulation; -webkit-tap-highlight-color: transparent;
       }
+      /* Tối ưu scroll cho iOS */
       html, body { -webkit-overflow-scrolling: touch; overscroll-behavior-y: none; }
       ::-webkit-scrollbar { width: 8px; }
       ::-webkit-scrollbar-track { background: #f5f5f4; }
@@ -56,7 +67,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script>
-        // === CẤU HÌNH FIREBASE ===
+        // === CẤU HÌNH FIREBASE CỦA BẠN ===
         const firebaseConfig = {
         apiKey: "AIzaSyD3FNEQkc-BgrgfYddYtAYHurQ63HL2MtE",
         authDomain: "lensflow-proofing-app.firebaseapp.com",
@@ -89,7 +100,7 @@
             return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
         }
 
-        // === ICON COMPONENT (Đã thêm maximize/minimize) ===
+        // === ICON COMPONENT ===
         const Icon = React.memo(({ name, size = 24, className = "", fill = "none", stroke = "currentColor" }) => {
             const icons = {
                 heart: <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>,
@@ -236,7 +247,7 @@ const PhotoCard = React.memo(({
     );
 }, (prev, next) => prev.photo === next.photo && prev.viewMode === next.viewMode && prev.allowComments === next.allowComments && prev.downloadedIds === next.downloadedIds && prev.index === next.index);
 
-        // === LIGHTBOX (ĐÃ NÂNG CẤP: FULLSCREEN BUTTON) ===
+        // === LIGHTBOX (Cập nhật: Hỗ trợ dvh và Fullscreen button) ===
         const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate, onDownload }) => {
             if (!photo) return null;
             
@@ -334,9 +345,9 @@ const PhotoCard = React.memo(({
                 window.addEventListener('keydown', handleKeyPress); return () => window.removeEventListener('keydown', handleKeyPress);
             }, [goToPrev, goToNext, onClose]);
             
+            // [SỬA DVH TẠI ĐÂY CHO LIGHTBOX]
             return (
-                // Thêm h-screen h-[100dvh] để ép chiều cao linh động
-<div className="fixed inset-0 h-screen h-[100dvh] z-50 flex items-center justify-center overflow-hidden bg-black" onClick={onClose} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{ touchAction: 'none' }}>
+                <div className="fixed inset-0 h-screen h-[100dvh] z-50 flex items-center justify-center overflow-hidden bg-black" onClick={onClose} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{ touchAction: 'none' }}>
                     <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
                         <img src={currentPhoto.url} className="w-full h-full object-cover blur-3xl scale-150 opacity-60 transition-all duration-500 ease-linear" alt="" />
                         <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
@@ -487,6 +498,21 @@ const PhotoCard = React.memo(({
         // === APP COMPONENT ===
         const App = ({ albumKey, initialAlbumName }) => {
             const gridRef = React.useRef(null); 
+            
+            // --- [MỚI] TỰ ĐỘNG FULLSCREEN KHI CHẠM VÀO MÀN HÌNH ---
+            useEffect(() => {
+                const android = /Android/i.test(navigator.userAgent);
+                if (android) {
+                    const goFull = () => {
+                        if (!document.fullscreenElement) {
+                            document.documentElement.requestFullscreen().catch(err => console.log("Chặn auto-fullscreen:", err));
+                        }
+                    };
+                    window.addEventListener('click', goFull, { once: true });
+                    window.addEventListener('touchstart', goFull, { once: true });
+                }
+            }, []);
+            // ------------------------------------------------------
 
             const [photos, setPhotos] = useState([]);
             const [viewMode, setViewMode] = useState('CLIENT');
@@ -821,6 +847,7 @@ const PhotoCard = React.memo(({
                 }
             }, [filteredPhotos]);
 
+            // [SỬA DVH TẠI ĐÂY CHO APP CONTAINER]
             return (
                 <div className="flex h-screen h-[100dvh] bg-gray-50 text-gray-900 overflow-hidden">
                     {notification && (
@@ -910,12 +937,13 @@ const PhotoCard = React.memo(({
                                 </header>
                                 {viewMode === 'CLIENT' && (<div className="md:hidden flex items-center gap-2 p-2 border-b border-gray-200 bg-white">{driveFolders.length > 0 && (<select value={currentFolderId} onChange={(e) => setCurrentFolderId(e.target.value)} className="flex-1 bg-gray-50 border border-gray-200 text-gray-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none"><option value="">Tất cả thư mục</option>{driveFolders.map((folder, idx) => (<option key={idx} value={folder.id}>{folder.name}</option>))}</select>)}{viewStats.total > 0 && (<div className="flex items-center justify-center gap-2 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg"><span className="font-bold text-pink-500">{viewStats.selected}</span><Icon name="heart" size={14} className="text-pink-500" fill="currentColor" /><span className="text-gray-400">/</span><span className="text-gray-600">{viewStats.total}</span></div>)}</div>)}
 
+                                {/* MAIN GRID VỚI REF ĐÃ GẮN */}
                                 <main className="flex-1 overflow-hidden relative md:p-4 bg-gray-50 w-full h-full">
                                     {!photos.length ? (
                                         <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50"><Icon name="grid" size={64} strokeWidth={1} className="mb-4" /><p className="text-lg font-light">Chưa có ảnh nào</p></div>
                                     ) : (
                                         <VirtualPhotoGrid
-                                            ref={gridRef}
+                                            ref={gridRef} // <--- [QUAN TRỌNG] Ref để điều khiển cuộn
                                             photos={filteredPhotos} viewMode={viewMode} onToggleSelect={toggleSelect} onUpdateComment={updateComment} onOpenView={handlePhotoChange} allowComments={allowComments} downloadedIds={downloadedIds} onDownload={handleSingleDownload} 
                                         />
                                     )}
