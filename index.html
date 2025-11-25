@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -6,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LensFlow - Client Proofing</title>
     
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#fafaf9">
+    <meta name="mobile-web-app-capable" content="yes">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -13,19 +17,10 @@
         theme: {
           extend: {
             colors: { 
-                // PALETTE MỚI: WARM STONE & SOFT GRAY (Hiện đại, dịu mắt)
                 gray: { 
-                    50: '#fafaf9',  // Warm white (Stone-50) - Nền chính
-                    100: '#f5f5f4', // Stone-100 - Nền phụ
-                    200: '#e7e5e4', // Stone-200 - Border nhạt
-                    300: '#d6d3d1', 
-                    400: '#a8a29e', 
-                    500: '#78716c', // Text phụ
-                    600: '#57534e', 
-                    700: '#44403c', 
-                    800: '#292524', // Text chính (Soft Black)
-                    900: '#1c1917', 
-                    950: '#0c0a09' 
+                    50: '#fafaf9', 100: '#f5f5f4', 200: '#e7e5e4', 300: '#d6d3d1', 
+                    400: '#a8a29e', 500: '#78716c', 600: '#57534e', 700: '#44403c', 
+                    800: '#292524', 900: '#1c1917', 950: '#0c0a09' 
                 } 
             },
             fontFamily: { sans: ['Inter', 'sans-serif'] }
@@ -36,38 +31,18 @@
 
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-      html, body {
-          overflow-x: hidden;
-      }
+      html, body { overflow-x: hidden; }
       body { 
           font-family: 'Inter', sans-serif; 
-          /* Sử dụng nền Warm Stone dịu mắt thay vì trắng toát */
-          background-color: #fafaf9; 
-          color: #292524; 
-          margin: 0;
-          touch-action: manipulation;
-          -webkit-tap-highlight-color: transparent;
+          background-color: #fafaf9; color: #292524; margin: 0;
+          touch-action: manipulation; -webkit-tap-highlight-color: transparent;
       }
-      /* Tối ưu scroll cho iOS */
-      html, body {
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-y: none;
-      }
+      html, body { -webkit-overflow-scrolling: touch; overscroll-behavior-y: none; }
       ::-webkit-scrollbar { width: 8px; }
       ::-webkit-scrollbar-track { background: #f5f5f4; }
       ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
-      input[type="password"]::-ms-reveal,
-      input[type="password"]::-ms-clear { display: none; }
-      
-      .gpu-accelerated {
-        transform: translateZ(0);
-      }
-      /* FIX LAG CHO IPHONE */
-      .ios-scroll-fix {
-        -webkit-overflow-scrolling: touch;
-        will-change: transform;
-        transform: translateZ(0); /* Kích hoạt card đồ họa GPU */
-      }
+      input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
+      .ios-scroll-fix { -webkit-overflow-scrolling: touch; will-change: transform; transform: translateZ(0); }
     </style>
 </head>
 <body>
@@ -75,17 +50,13 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-	
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
-     <!-- Thêm thư viện exif-js để đọc EXIF từ file ảnh -->
      <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
-    
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script>
-        // === CẤU HÌNH FIREBASE CỦA BẠN - HÃY THAY THẾ CÁC PLACEHOLDER ===
+        // === CẤU HÌNH FIREBASE ===
         const firebaseConfig = {
         apiKey: "AIzaSyD3FNEQkc-BgrgfYddYtAYHurQ63HL2MtE",
         authDomain: "lensflow-proofing-app.firebaseapp.com",
@@ -95,8 +66,6 @@
         appId: "1:996306881846:web:f36c35d962ff8e0aa47797",
         databaseURL: "https://lensflow-proofing-app-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
-        
-        // Khởi tạo Firebase và đối tượng Database
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
     </script>
@@ -106,34 +75,21 @@
 
         // === UTILITIES ===
         const getStorage = (key, def) => localStorage.getItem(key) ?? def;
-        const getBool = (key, def) => localStorage.getItem(key) === 'true' || (localStorage.getItem(key) === null && def);
         const arrayToObject = (array) => array.reduce((acc, photo) => { acc[photo.id] = photo; return acc; }, {});
         const objectToArray = (object) => object ? Object.values(object) : [];
        
-            // Hàm so sánh ngày chụp (Cập nhật: Mới nhất lên đầu)
-            function compareDateTaken(a, b) {
-                // 1. So sánh ngày (nếu có)
-                if (a.dateTaken && b.dateTaken) {
-                    const da = new Date(a.dateTaken);
-                    const db = new Date(b.dateTaken);
-                    if (!isNaN(da) && !isNaN(db)) {
-                        // Sửa: db - da để ảnh mới nhất lên đầu (Giảm dần)
-                        // Nếu muốn cũ nhất lên đầu thì dùng: da - db
-                        return da - db; 
-                    }
-                }
-                
-                // 2. Ảnh có ngày luôn xếp trên ảnh không có ngày
-                if (a.dateTaken && !b.dateTaken) return -1;
-                if (!a.dateTaken && b.dateTaken) return 1;
-                
-                // 3. So sánh tên file (Nếu không có ngày hoặc ngày trùng nhau)
-                // numeric: true giúp so sánh "img2" < "img10" đúng
-                return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        function compareDateTaken(a, b) {
+            if (a.dateTaken && b.dateTaken) {
+                const da = new Date(a.dateTaken);
+                const db = new Date(b.dateTaken);
+                if (!isNaN(da) && !isNaN(db)) return da - db; 
             }
+            if (a.dateTaken && !b.dateTaken) return -1;
+            if (!a.dateTaken && b.dateTaken) return 1;
+            return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        }
 
-        // === ICON COMPONENT ===
-        // Memoized to prevent unnecessary re-renders
+        // === ICON COMPONENT (Đã thêm maximize/minimize) ===
         const Icon = React.memo(({ name, size = 24, className = "", fill = "none", stroke = "currentColor" }) => {
             const icons = {
                 heart: <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>,
@@ -158,7 +114,9 @@
                 messageOn: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><polyline points="9 10 12 13 16 9"></polyline></svg>,
                 messageOff: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><line x1="9" y1="10" x2="15" y2="10"></line></svg>,
                 shield: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>,
-                menu: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                menu: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>,
+                maximize: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>,
+                minimize: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" className={className}><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>,
             };
             return icons[name] || null;
         });
@@ -166,68 +124,34 @@
         // === PASSCODE/INITIALIZATION MODAL COMPONENT ===
 const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey }) => {
     const [input, setInput] = useState('');
-    // Thêm state nội bộ để quản lý lỗi hiển thị, đồng bộ với prop `error`
     const [internalError, setInternalError] = useState(error);
-
-    useEffect(() => {
-        setInternalError(error);
-    }, [error]);
-
+    useEffect(() => { setInternalError(error); }, [error]);
     const [adminPassword, setAdminPassword] = useState('');
     const [newPasscode, setNewPasscode] = useState('');
 
     const handleLogin = (e) => {
         e.preventDefault();
-        if (isInitialized) {
-            // Chế độ Album đã Khởi tạo (yêu cầu Passcode)
-            onAccess(input); 
-        } else {
-            // Chế độ Khởi tạo Album lần đầu
-            onInitialize(adminPassword, newPasscode);
-        }
+        if (isInitialized) { onAccess(input); } else { onInitialize(adminPassword, newPasscode); }
     };
 
     return (
         <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-md w-full shadow-2xl">
-                <div className="flex justify-center mb-6 text-pink-500">
-                    <Icon name={isInitialized ? "lock" : "shield"} size={48} />
-                </div>
-                <h2 className="text-2xl font-bold text-center mb-2 text-gray-900">
-                    {isInitialized ? 'Truy Cập Album' : 'Khởi Tạo Album'}
-                </h2>
-                <p className="text-sm text-gray-500 text-center mb-6">
-                    {isInitialized ? `Album: ${albumKey}` : 'Vui lòng tạo mật khẩu Admin và Mã truy cập.'}
-                </p>
-
+                <div className="flex justify-center mb-6 text-pink-500"><Icon name={isInitialized ? "lock" : "shield"} size={48} /></div>
+                <h2 className="text-2xl font-bold text-center mb-2 text-gray-900">{isInitialized ? 'Truy Cập Album' : 'Khởi Tạo Album'}</h2>
+                <p className="text-sm text-gray-500 text-center mb-6">{isInitialized ? `Album: ${albumKey}` : 'Vui lòng tạo mật khẩu Admin và Mã truy cập.'}</p>
                 <form onSubmit={handleLogin}>
-                    {/* CHẾ ĐỘ ALBUM ĐÃ KHỞI TẠO (YÊU CẦU PASSCODE) */}
-                    {isInitialized && (
-                        <>
-                            <input type="text" autoFocus value={input} onChange={(e) => {
-                                setInput(e.target.value);
-                                if (internalError) {
-                                    setInternalError(false); // Xóa lỗi khi người dùng bắt đầu nhập lại
-                                }
-                            }} placeholder="Nhập mã truy cập (Passcode)" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4 placeholder-gray-400" />
+                    {isInitialized && (<>
+                            <input type="text" autoFocus value={input} onChange={(e) => { setInput(e.target.value); if (internalError) { setInternalError(false); } }} placeholder="Nhập mã truy cập (Passcode)" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4 placeholder-gray-400" />
                             {internalError && <p className="text-red-500 text-xs text-center mb-4">Mã truy cập không hợp lệ.</p>}
-                            <button type="submit" className="w-full py-3 rounded-lg bg-pink-500 hover:bg-pink-400 text-white font-bold shadow-lg shadow-pink-500/30 transition-all">
-                                Vào Xem Album
-                            </button>
-                        </>
-                    )}
-
-                    {/* CHẾ ĐỘ KHỞI TẠO LẦN ĐẦU (ADMIN ONLY) */}
-                    {!isInitialized && (
-                        <>
+                            <button type="submit" className="w-full py-3 rounded-lg bg-pink-500 hover:bg-pink-400 text-white font-bold shadow-lg shadow-pink-500/30 transition-all">Vào Xem Album</button>
+                    </>)}
+                    {!isInitialized && (<>
                             <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="Tạo Mật khẩu Admin" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-3" />
                             <input type="text" value={newPasscode} onChange={(e) => setNewPasscode(e.target.value)} placeholder="Tạo Mã truy cập Khách" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4" />
                             {error && <p className="text-red-500 text-xs text-center mb-4">{error}</p>}
-                            <button type="submit" disabled={!adminPassword || !newPasscode} className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold disabled:opacity-50 shadow-lg">
-                                Khởi Tạo & Truy Cập
-                            </button>
-                        </>
-                    )}
+                            <button type="submit" disabled={!adminPassword || !newPasscode} className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold disabled:opacity-50 shadow-lg">Khởi Tạo & Truy Cập</button>
+                    </>)}
                 </form>
             </div>
         </div>
@@ -235,15 +159,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
 };
         // === PHOTOCARD (ĐÃ NÂNG CẤP CHẤT LƯỢNG ẢNH THÔNG MINH) ===
 const PhotoCard = React.memo(({ 
-    photo, 
-    viewMode, 
-    onToggleSelect, 
-    onUpdateComment, 
-    onOpenView, 
-    allowComments, 
-    onDownload, 
-    downloadedIds,
-    index // <--- [MỚI] Nhận thêm số thứ tự ảnh
+    photo, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, onDownload, downloadedIds, index 
 }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [localComment, setLocalComment] = useState(photo.comments || "");
@@ -256,42 +172,24 @@ const PhotoCard = React.memo(({
 
     const handleCardClick = useCallback(() => { onOpenView(photo); }, [photo, onOpenView]);
     const handleToggleClick = useCallback((e) => { e.stopPropagation(); onToggleSelect(photo.id); }, [photo.id, onToggleSelect]);
-
     const isDownloaded = downloadedIds && downloadedIds.has(photo.id);
 
     // === [LOGIC MỚI] TỐI ƯU CHẤT LƯỢNG ẢNH ===
-    // 1. Xác định đây có phải là nhóm ảnh đầu tiên không (Top 12 ảnh ~ 3 hàng trên PC hoặc 12 hàng trên Mobile)
     const isPriority = index < 12;
-
-    // 2. Tính toán URL chất lượng cao hơn
-    // - Nếu là Top đầu: Dùng w800 (Rất nét, ưu tiên hiển thị ngay)
-    // - Nếu là ảnh dưới: Dùng w500 (Nét hơn w300 cũ, nhưng vẫn nhẹ để cuộn mượt)
-    // Lưu ý: Logic này thay thế 'sz=w300' có sẵn trong URL từ Firebase
-    // === [LOGIC MỚI - ĐÃ ĐIỀU CHỈNH THEO Ý BẠN] ===
     const displayUrl = useMemo(() => {
         if (!photo.url) return "";
-        
-        // isPriority (Top 12 ảnh): Dùng w800 để nét ngay lập tức khi mở web.
-        // Các ảnh sau: CŨNG DÙNG w800 luôn (thay vì w500) để khi khách cuộn xuống là thấy ảnh nét.
-        // Lưu ý: w800 sẽ tốn dung lượng 4G hơn w500 một chút, nhưng đẹp hơn hẳn.
-        
-        const targetSize = 'w800'; // <--- ĐỔI HẾT THÀNH w800 HOẶC w600
-        
+        const targetSize = isPriority ? 'w1000' : 'w800'; 
         return photo.url.replace(/sz=[ws]\d+/, `sz=${targetSize}`).replace(/=w\d+/, `=${targetSize}`);
-    }, [photo.url]);
+    }, [photo.url, isPriority]);
 
     return (
     <div className={`relative group md:rounded-xl overflow-hidden bg-white md:shadow-sm transition-all duration-200 ${photo.isSelected ? 'ring-2 ring-pink-500 shadow-md' : 'md:hover:shadow-lg'}`}>
         <div className="aspect-[3/4] md:aspect-[4/5] cursor-pointer overflow-hidden relative bg-gray-100" onClick={handleCardClick}>
             <div className={`w-full h-full bg-gray-100 transition-opacity duration-500 ${isLoaded ? 'opacity-0 absolute' : 'opacity-100'}`} />
-            
-            {/* [SỬA] Thẻ IMG với thuộc tính ưu tiên tải */}
             <img 
                 src={displayUrl} 
                 alt="" 
-                // Nếu là ảnh ưu tiên: Tải ngay (eager). Ảnh dưới: Tải lười (lazy)
                 loading={isPriority ? "eager" : "lazy"} 
-                // Báo trình duyệt ưu tiên băng thông cho ảnh đầu
                 fetchPriority={isPriority ? "high" : "auto"}
                 decoding="async" 
                 onLoad={() => setIsLoaded(true)} 
@@ -300,7 +198,6 @@ const PhotoCard = React.memo(({
             />
         </div>
 
-        {/* ... (Phần thông tin bên dưới giữ nguyên không đổi) ... */}
         <div className="absolute md:translate-y-2 md:group-hover:translate-y-0 bottom-0 left-0 right-0 p-3 transition-transform duration-300 bg-white/95 border-t border-gray-100">
             <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-medium text-gray-700 truncate flex-1 mr-2">{photo.name}</span>
@@ -312,10 +209,7 @@ const PhotoCard = React.memo(({
                     >
                         <Icon name={isDownloaded ? "check" : "download"} size={16} strokeWidth={isDownloaded ? 3 : 2} />
                     </button>
-                    <button 
-                        onClick={handleToggleClick} 
-                        className={`w-8 h-8 flex items-center justify-center rounded-colors duration-200 ${photo.isSelected ? 'bg-pink-500 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                    >
+                    <button onClick={handleToggleClick} className={`w-8 h-8 flex items-center justify-center rounded-colors duration-200 ${photo.isSelected ? 'bg-pink-500 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
                         {viewMode === 'CLIENT' ? <Icon name="heart" size={16} fill={photo.isSelected ? "currentColor" : "none"} /> : <Icon name="checkCircle" size={16} />}
                     </button>
                 </div>
@@ -337,25 +231,23 @@ const PhotoCard = React.memo(({
                 </div>
             )}
         </div>
-        
         {photo.isSelected && <div className="absolute top-2 right-2 bg-pink-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md z-10">ĐÃ CHỌN</div>}
     </div>
     );
-}, (prev, next) => prev.photo === next.photo && prev.viewMode === next.viewMode && prev.allowComments === next.allowComments && prev.downloadedIds === next.downloadedIds && prev.index === next.index); // Nhớ thêm prev.index vào đây
+}, (prev, next) => prev.photo === next.photo && prev.viewMode === next.viewMode && prev.allowComments === next.allowComments && prev.downloadedIds === next.downloadedIds && prev.index === next.index);
 
-        // LIGHTBOX REDESIGN: MODERN LIGHT THEME
-// === LIGHTBOX (FINAL: SD/HD TRONG SUỐT + GẦN NÚT CHỌN) ===
+        // === LIGHTBOX (ĐÃ NÂNG CẤP: FULLSCREEN BUTTON) ===
         const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate, onDownload }) => {
             if (!photo) return null;
             
             const [scale, setScale] = useState(1);
             const [position, setPosition] = useState({ x: 0, y: 0 });
             const [isDragging, setIsDragging] = useState(false);
-            
             const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
             const [swipeOffset, setSwipeOffset] = useState(0);
             const [isSwiping, setIsSwiping] = useState(false);
             const [showUI, setShowUI] = useState(true); 
+            const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
 
             const touchStartX = React.useRef(0);
             const lastTouchDistance = React.useRef(null);
@@ -367,497 +259,220 @@ const PhotoCard = React.memo(({
             const prevPhoto = currentIndex > 0 ? allPhotos[currentIndex - 1] : null;
             const nextPhoto = currentIndex < allPhotos.length - 1 ? allPhotos[currentIndex + 1] : null;
 
-            const getDistance = (touches) => {
-                return Math.hypot(
-                    touches[0].pageX - touches[1].pageX,
-                    touches[0].pageY - touches[1].pageY
-                );
+            const getDistance = (touches) => Math.hypot(touches[0].pageX - touches[1].pageX, touches[0].pageY - touches[1].pageY);
+
+            const toggleFullscreen = () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch((e) => { console.log(e); }); setIsFullscreen(true);
+                } else {
+                    if (document.exitFullscreen) { document.exitFullscreen(); setIsFullscreen(false); }
+                }
             };
+            useEffect(() => {
+                const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+                document.addEventListener('fullscreenchange', handleFsChange); return () => document.removeEventListener('fullscreenchange', handleFsChange);
+            }, []);
 
             useEffect(() => {
-                const preloadImage = (src) => {
-                    const img = new Image();
-                    img.src = src;
-                };
+                const preloadImage = (src) => { const img = new Image(); img.src = src; };
                 if (nextPhoto) preloadImage(nextPhoto.lightboxUrl || nextPhoto.url);
                 if (prevPhoto) preloadImage(prevPhoto.lightboxUrl || prevPhoto.url);
             }, [currentIndex, nextPhoto, prevPhoto]);
 
             useEffect(() => {
-                setIsLoadingHighRes(false);
-                setIsHighResLoaded(false);
-                setScale(1);
-                setPosition({ x: 0, y: 0 });
-                setSwipeOffset(0); 
-                lastTouchDistance.current = null;
-                setShowUI(true); 
+                setIsLoadingHighRes(false); setIsHighResLoaded(false); setScale(1); setPosition({ x: 0, y: 0 }); setSwipeOffset(0); lastTouchDistance.current = null; setShowUI(true); 
             }, [photo.id, photo.lightboxUrl, photo.url]);
             
             const goToPrev = useCallback(() => { if (prevPhoto) { onNavigate(prevPhoto); } }, [prevPhoto, onNavigate]);
             const goToNext = useCallback(() => { if (nextPhoto) { onNavigate(nextPhoto); } }, [nextPhoto, onNavigate]);
             
             const onTouchStart = (e) => {
-                if (e.touches.length === 2) {
-                    const distance = getDistance(e.touches);
-                    lastTouchDistance.current = distance;
-                    return;
-                }
+                if (e.touches.length === 2) { lastTouchDistance.current = getDistance(e.touches); return; }
                 if (e.touches.length === 1) {
                     lastTouchDistance.current = null;
-                    if (scale > 1) {
-                        setIsDragging(true);
-                        setDragStart({ 
-                            x: e.touches[0].clientX - position.x, 
-                            y: e.touches[0].clientY - position.y 
-                        });
-                    } else {
-                        setIsSwiping(true);
-                        touchStartX.current = e.targetTouches[0].clientX;
-                    }
+                    if (scale > 1) { setIsDragging(true); setDragStart({ x: e.touches[0].clientX - position.x, y: e.touches[0].clientY - position.y }); } 
+                    else { setIsSwiping(true); touchStartX.current = e.targetTouches[0].clientX; }
                 }
             }
-
             const onTouchMove = (e) => {
                 if (e.touches.length === 2 && lastTouchDistance.current) {
                     const newDistance = getDistance(e.touches);
                     const delta = newDistance / lastTouchDistance.current;
                     lastTouchDistance.current = newDistance;
-                    setScale(prevScale => {
-                        const newScale = prevScale * delta;
-                        return Math.max(1, Math.min(newScale, 4));
-                    });
+                    setScale(prevScale => Math.max(1, Math.min(prevScale * delta, 4)));
                     return;
                 }
                 if (e.touches.length === 1) {
-                    if (scale > 1 && isDragging) {
-                        setPosition({ 
-                            x: e.touches[0].clientX - dragStart.x, 
-                            y: e.touches[0].clientY - dragStart.y 
-                        });
-                    } else if (scale === 1 && isSwiping) {
-                        const currentX = e.targetTouches[0].clientX;
-                        const diff = currentX - touchStartX.current;
-                        setSwipeOffset(diff * 0.2); 
-                    }
+                    if (scale > 1 && isDragging) { setPosition({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y }); } 
+                    else if (scale === 1 && isSwiping) { const diff = e.targetTouches[0].clientX - touchStartX.current; setSwipeOffset(diff * 0.2); }
                 }
             }
-
             const onTouchEnd = () => {
                 lastTouchDistance.current = null;
-                if (scale > 1) {
-                    setIsDragging(false);
-                } else {
+                if (scale > 1) { setIsDragging(false); } 
+                else {
                     if (!isSwiping) return;
                     setIsSwiping(false);
                     const minSwipeDistance = 15; 
-                    if (swipeOffset > minSwipeDistance && prevPhoto) {
-                        goToPrev();
-                    } else if (swipeOffset < -minSwipeDistance && nextPhoto) {
-                        goToNext();
-                    } else {
-                        setSwipeOffset(0);
-                    }
+                    if (swipeOffset > minSwipeDistance && prevPhoto) { goToPrev(); } 
+                    else if (swipeOffset < -minSwipeDistance && nextPhoto) { goToNext(); } 
+                    else { setSwipeOffset(0); }
                 }
             }
-
-            const handleWheel = (e) => {
-                e.preventDefault();
-                const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                setScale(prev => Math.max(1, Math.min(prev * delta, 4)));
-            };
-            
-            const handleMouseDown = (e) => {
-                if (scale > 1) {
-                    setIsDragging(true);
-                    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-                }
-            };
-            
-            const handleMouseMove = (e) => {
-                if (isDragging && scale > 1) {
-                    setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-                }
-            };
-            
+            const handleWheel = (e) => { e.preventDefault(); const delta = e.deltaY > 0 ? 0.9 : 1.1; setScale(prev => Math.max(1, Math.min(prev * delta, 4))); };
+            const handleMouseDown = (e) => { if (scale > 1) { setIsDragging(true); setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y }); } };
+            const handleMouseMove = (e) => { if (isDragging && scale > 1) { setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }); } };
             const handleMouseUp = () => setIsDragging(false);
             const resetZoom = () => { setScale(1); setPosition({ x: 0, y: 0 }); };
             const handleLoadHighRes = () => { setIsLoadingHighRes(true); };
 
-            useEffect(() => {
-                if (scale > 1.5 && !isHighResLoaded && !isLoadingHighRes) {
-                    handleLoadHighRes();
-                }
-            }, [scale, isHighResLoaded, isLoadingHighRes]);
-
-            const handleDoubleClick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (scale === 1) {
-                    setScale(2);
-                } else {
-                    resetZoom();
-                }
-            };
+            useEffect(() => { if (scale > 1.5 && !isHighResLoaded && !isLoadingHighRes) { handleLoadHighRes(); } }, [scale, isHighResLoaded, isLoadingHighRes]);
+            const handleDoubleClick = (e) => { e.preventDefault(); e.stopPropagation(); if (scale === 1) { setScale(2); } else { resetZoom(); } };
             
             useEffect(() => {
-                const handleKeyPress = (e) => {
-                    if (e.key === 'ArrowLeft') goToPrev();
-                    if (e.key === 'ArrowRight') goToNext();
-                    if (e.key === 'Escape') onClose();
-                };
-                window.addEventListener('keydown', handleKeyPress);
-                return () => window.removeEventListener('keydown', handleKeyPress);
+                const handleKeyPress = (e) => { if (e.key === 'ArrowLeft') goToPrev(); if (e.key === 'ArrowRight') goToNext(); if (e.key === 'Escape') onClose(); };
+                window.addEventListener('keydown', handleKeyPress); return () => window.removeEventListener('keydown', handleKeyPress);
             }, [goToPrev, goToNext, onClose]);
             
             return (
-                <div 
-                    className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden" 
-                    onClick={onClose}
-                    onTouchStart={onTouchStart}
-                    onTouchMove={onTouchMove}
-                    onTouchEnd={onTouchEnd}
-                    style={{ touchAction: 'none' }}
-                >
+                <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black" onClick={onClose} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{ touchAction: 'none' }}>
                     <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-                        <img 
-                            src={currentPhoto.url} 
-                            className="w-full h-full object-cover blur-3xl scale-150 opacity-60 transition-all duration-500 ease-linear"
-                            alt="" 
-                        />
+                        <img src={currentPhoto.url} className="w-full h-full object-cover blur-3xl scale-150 opacity-60 transition-all duration-500 ease-linear" alt="" />
                         <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
                     </div>
-
-                    {/* --- [SỬA] THÔNG BÁO SD/HD: DỜI XUỐNG GẦN NÚT CHỌN + NỀN TRONG SUỐT --- */}
                     <div className={`absolute bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'}`}>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-sm border backdrop-blur-md ${
-                            isHighResLoaded 
-                            ? 'bg-green-100/40 text-green-800 border-green-200/50' // HD: Nền xanh trong suốt
-                            : 'bg-white/40 text-gray-600 border-white/50'          // SD: Nền trắng trong suốt
-                        }`}>
-                            {isHighResLoaded ? 'HD' : 'SD'}
-                        </span>
-                    </div>
-                    
-					<button 
-						onClick={(e) => { e.stopPropagation(); onDownload(currentPhoto); }} 
-						className={`absolute top-4 right-16 md:top-6 md:right-20 text-gray-500 hover:text-blue-600 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}
-						title="Tải ảnh gốc"
-					>
-						<Icon name="download" size={24} />
-					</button>
-                    <button 
-                        onClick={onClose} 
-                        className={`absolute top-4 right-4 md:top-6 md:right-6 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}
-                    >
-                        <Icon name="x" size={24} />
-                    </button>
-
-                    <div className={`absolute top-4 left-4 md:top-6 md:left-6 z-50 bg-white/80 border border-gray-100 backdrop-blur px-4 py-2 rounded-full shadow-sm max-w-[calc(100%-6rem)] transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'} md:opacity-100`}>
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-bold text-gray-800 truncate">{currentPhoto.name}</span>
-                            <span className="text-xs text-gray-400 border-l border-gray-300 pl-3">{currentIndex + 1} / {allPhotos.length} {scale > 1 && `• ${Math.round(scale * 100)}%`}</span>
-                        </div>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-sm border backdrop-blur-md ${isHighResLoaded ? 'bg-green-100/40 text-green-800 border-green-200/50' : 'bg-white/40 text-gray-600 border-white/50'}`}>{isHighResLoaded ? 'HD' : 'SD'}</span>
                     </div>
 
-                    
+                    {/* BUTTONS */}
+                    <button onClick={(e) => { e.stopPropagation(); onDownload(currentPhoto); }} className={`absolute top-4 right-28 md:top-6 md:right-32 text-gray-500 hover:text-blue-600 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`} title="Tải ảnh gốc"><Icon name="download" size={24} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className={`absolute top-4 right-16 md:top-6 md:right-20 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`} title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}><Icon name={isFullscreen ? "minimize" : "maximize"} size={24} /></button>
+                    <button onClick={onClose} className={`absolute top-4 right-4 md:top-6 md:right-6 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}><Icon name="x" size={24} /></button>
 
-                    {prevPhoto && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); goToPrev(); }} 
-                            className={`hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-4 bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50`}
-                        >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                        </button>
-                    )}
-                    
-                    {nextPhoto && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); goToNext(); }} 
-                            className={`hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-4 bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50`}
-                        >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </button>
-                    )}
+                    <div className={`absolute top-4 left-4 md:top-6 md:left-6 z-50 bg-white/80 border border-gray-100 backdrop-blur px-4 py-2 rounded-full shadow-sm max-w-[calc(100%-8rem)] transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'} md:opacity-100`}>
+                        <div className="flex items-center gap-3"><span className="text-sm font-bold text-gray-800 truncate">{currentPhoto.name}</span><span className="text-xs text-gray-400 border-l border-gray-300 pl-3">{currentIndex + 1} / {allPhotos.length} {scale > 1 && `• ${Math.round(scale * 100)}%`}</span></div>
+                    </div>
+
+                    {prevPhoto && (<button onClick={(e) => { e.stopPropagation(); goToPrev(); }} className={`hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-4 bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg></button>)}
+                    {nextPhoto && (<button onClick={(e) => { e.stopPropagation(); goToNext(); }} className={`hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-4 bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg></button>)}
 
                     <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => { e.stopPropagation(); }}>
-                        
-                        {prevPhoto && scale === 1 && (
-                            <div className="hidden md:block absolute left-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToPrev(); }}>
-                                <img src={prevPhoto.url} alt="" className="w-full h-full object-cover rounded-lg shadow-lg" />
-                            </div>
-                        )}
+                        {prevPhoto && scale === 1 && (<div className="hidden md:block absolute left-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToPrev(); }}><img src={prevPhoto.url} alt="" className="w-full h-full object-cover rounded-lg shadow-lg" /></div>)}
 
                         <div className="relative z-10 w-full md:w-[70vw] h-full md:h-[90vh] flex items-center justify-center">
-                            <div 
-                                className="relative w-full h-full flex items-center justify-center"
-                                onWheel={handleWheel}
-                                onMouseDown={handleMouseDown}
-                                onMouseMove={handleMouseMove}
-                                onMouseUp={handleMouseUp}
-                                onMouseLeave={handleMouseUp}
-                                onDoubleClick={handleDoubleClick}
-                                style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
-                            >
-                                <img 
-                                    src={photo.lightboxUrl || photo.url}
-                                    alt=""
-                                    className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-0' : 'opacity-100'}`}
-                                    style={{ 
-                                        transform: scale > 1 
-                                            ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`
-                                            : `translateX(${swipeOffset}px)`,
-                                        transformOrigin: 'center',
-                                        transition: (isSwiping || isDragging || lastTouchDistance.current) ? 'none' : 'transform 0.2s ease-out' 
-                                    }}
-                                    draggable={false}
-                                />
-                                
-                                {(isLoadingHighRes || isHighResLoaded) && (
-                                    <img 
-                                        src={photo.originalUrl}
-                                        alt=""
-                                        onLoad={() => { setIsLoadingHighRes(false); setIsHighResLoaded(true); }}
-                                        className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-100' : 'opacity-0'}`}
-                                        style={{ 
-                                            transform: scale > 1 
-                                                ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`
-                                                : `translateX(${swipeOffset}px)`,
-                                            transformOrigin: 'center',
-                                            transition: (isSwiping || isDragging || lastTouchDistance.current) ? 'none' : 'transform 0.2s ease-out'
-                                        }}
-                                        draggable={false}
-                                    />
-                                )}
+                            <div className="relative w-full h-full flex items-center justify-center" onWheel={handleWheel} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onDoubleClick={handleDoubleClick} style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}>
+                                <img src={photo.lightboxUrl || photo.url} alt="" className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-0' : 'opacity-100'}`} style={{ transform: scale > 1 ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)` : `translateX(${swipeOffset}px)`, transformOrigin: 'center', transition: (isSwiping || isDragging || lastTouchDistance.current) ? 'none' : 'transform 0.2s ease-out' }} draggable={false} />
+                                {(isLoadingHighRes || isHighResLoaded) && (<img src={photo.originalUrl} alt="" onLoad={() => { setIsLoadingHighRes(false); setIsHighResLoaded(true); }} className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-100' : 'opacity-0'}`} style={{ transform: scale > 1 ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)` : `translateX(${swipeOffset}px)`, transformOrigin: 'center', transition: (isSwiping || isDragging || lastTouchDistance.current) ? 'none' : 'transform 0.2s ease-out' }} draggable={false} />)}
                             </div>
                         </div>
 
-                        {nextPhoto && scale === 1 && (
-                            <div className="hidden md:block absolute right-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToNext(); }}>
-                                <img src={nextPhoto.url} alt="" className="w-full h-full object-cover rounded-lg shadow-lg" />
-                            </div>
-                        )}
+                        {nextPhoto && scale === 1 && (<div className="hidden md:block absolute right-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToNext(); }}><img src={nextPhoto.url} alt="" className="w-full h-full object-cover rounded-lg shadow-lg" /></div>)}
                     </div>
-					{/* --- [NÚT CHỌN ẢNH SIÊU NHẠY] --- */}
-                    <button 
-                        // 1. Xử lý cho PC (Chuột)
-                        onClick={(e) => { 
-                            e.stopPropagation(); 
-                            onToggleSelect(currentPhoto.id); 
-                        }}
-
-                        // 2. Xử lý cho Mobile (Chạm) -> NHẠY HƠN CLICK RẤT NHIỀU
-                        onTouchEnd={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault(); // Chặn trình duyệt chờ đợi "Click", kích hoạt ngay lập tức
-                            onToggleSelect(currentPhoto.id);
-                        }}
-
-                        // 3. Chặn sự kiện vuốt lọt vào Lightbox (Fix lỗi đang vuốt mà bấm không ăn)
-                        onTouchStart={(e) => e.stopPropagation()}
-                        
-                        // 4. Tăng vùng bấm ảo (Hit box) lên to hơn mà không làm xấu giao diện
-                        // Thêm class: 'before:absolute before:-inset-4 before:content-[""]' để mở rộng vùng bấm ra xung quanh 16px
-                        className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 flex items-center gap-2 shadow-xl duration-300 before:absolute before:-inset-6 before:content-[""] ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} md:translate-y-0 md:opacity-100 md:pointer-events-auto ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
-                    >
+                    <button onClick={(e) => { e.stopPropagation(); onToggleSelect(currentPhoto.id); }} onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onToggleSelect(currentPhoto.id); }} onTouchStart={(e) => e.stopPropagation()} className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 flex items-center gap-2 shadow-xl duration-300 before:absolute before:-inset-6 before:content-[""] ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} md:translate-y-0 md:opacity-100 md:pointer-events-auto ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}>
                         <Icon name="heart" size={24} fill={currentPhoto.isSelected ? "currentColor" : "none"} />
                         <span className="text-sm font-bold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
                     </button>
                 </div>
             );
         };
-//
-// === [MỚI] COMPONENT LƯỚI ẢO TỰ VIẾT (Thay thế react-window) ===
+        
         // === [MỚI] COMPONENT LƯỚI ẢO TỰ VIẾT (Có hỗ trợ Scroll To Index) ===
-const SimpleFixedSizeGrid = React.memo(React.forwardRef(({ columnCount, columnWidth, height, rowCount, rowHeight, width, children: Cell, itemData, className, style, overscanRowCount = 2 }, ref) => {
-    const [scrollTop, setScrollTop] = useState(0);
-    const containerRef = React.useRef(null);
+        const SimpleFixedSizeGrid = React.memo(React.forwardRef(({ columnCount, columnWidth, height, rowCount, rowHeight, width, children: Cell, itemData, className, style, overscanRowCount = 2 }, ref) => {
+            const [scrollTop, setScrollTop] = useState(0);
+            const containerRef = React.useRef(null);
 
-    // --- [LOGIC MỚI] Mở cổng cho cha điều khiển ---
-    React.useImperativeHandle(ref, () => ({
-        scrollToItem: (index) => {
-            if (!containerRef.current) return;
-            // Tính hàng chứa ảnh đó
-            const rowIndex = Math.floor(index / columnCount);
-            // Tính vị trí pixel cần cuộn tới
-            const targetScrollTop = rowIndex * rowHeight;
+            React.useImperativeHandle(ref, () => ({
+                scrollToItem: (index) => {
+                    if (!containerRef.current) return;
+                    const rowIndex = Math.floor(index / columnCount);
+                    const targetScrollTop = rowIndex * rowHeight;
+                    containerRef.current.scrollTo({ top: targetScrollTop, behavior: 'auto' });
+                }
+            }));
+
+            const handleScroll = (e) => { setScrollTop(e.target.scrollTop); };
+            const startIndex = Math.floor(scrollTop / rowHeight);
+            const endIndex = Math.min(rowCount - 1, Math.floor((scrollTop + height) / rowHeight) + overscanRowCount);
+            const items = [];
+            const renderStart = Math.max(0, startIndex - 1); 
             
-            // Thực hiện cuộn (Smooth cho đẹp, auto cho nhanh)
-            containerRef.current.scrollTo({
-                top: targetScrollTop,
-                behavior: 'auto' // Dùng 'auto' để sync tức thì, 'smooth' có thể bị lag nếu vuốt nhanh
-            });
-        }
-    }));
-    // ----------------------------------------------
-
-    const handleScroll = (e) => {
-        setScrollTop(e.target.scrollTop);
-    };
-
-    const startIndex = Math.floor(scrollTop / rowHeight);
-    const endIndex = Math.min(
-        rowCount - 1,
-        Math.floor((scrollTop + height) / rowHeight) + overscanRowCount
-    );
-
-    const items = [];
-    const renderStart = Math.max(0, startIndex - 1); 
-    
-    for (let rowIndex = renderStart; rowIndex <= endIndex; rowIndex++) {
-        for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
-            const key = `${rowIndex}-${columnIndex}`;
-            const itemStyle = {
-                position: 'absolute',
-                top: rowIndex * rowHeight,
-                left: columnIndex * columnWidth,
-                height: rowHeight,
-                width: columnWidth,
-            };
-            
-            items.push(
-                <Cell 
-                    key={key}
-                    columnIndex={columnIndex}
-                    rowIndex={rowIndex}
-                    style={itemStyle}
-                    data={itemData}
-                />
-            );
-        }
-    }
-
-    return (
-        <div 
-            ref={containerRef} // Gán ref vào div chính
-            className={className}
-            style={{ ...style, height, width, overflow: 'auto', position: 'relative', WebkitOverflowScrolling: 'touch' }}
-            onScroll={handleScroll}
-        >
-            <div style={{ height: rowCount * rowHeight, width: '100%', position: 'relative' }}>
-                {items}
-            </div>
-        </div>
-    );
-}));
-// === VIRTUAL GRID COMPONENT (ĐÃ ĐIỀU CHỈNH BREAKPOINT CHO LAPTOP + ADMIN PANEL) ===
-// === VIRTUAL GRID COMPONENT (Có Ref để App gọi) ===
-const VirtualPhotoGrid = React.memo(React.forwardRef(({ 
-    photos, 
-    viewMode, 
-    onToggleSelect, 
-    onUpdateComment, 
-    onOpenView, 
-    allowComments, 
-    onDownload, 
-    downloadedIds 
-}, ref) => { // <--- Nhận ref từ App
-    const containerRef = React.useRef(null);
-    const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-
-    useEffect(() => {
-        if (!containerRef.current) return;
-        const resizeObserver = new ResizeObserver(entries => {
-            for (let entry of entries) {
-                setDimensions({
-                    width: entry.contentRect.width,
-                    height: entry.contentRect.height
-                });
+            for (let rowIndex = renderStart; rowIndex <= endIndex; rowIndex++) {
+                for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+                    const key = `${rowIndex}-${columnIndex}`;
+                    const itemStyle = { position: 'absolute', top: rowIndex * rowHeight, left: columnIndex * columnWidth, height: rowHeight, width: columnWidth };
+                    items.push(<Cell key={key} columnIndex={columnIndex} rowIndex={rowIndex} style={itemStyle} data={itemData} />);
+                }
             }
-        });
-        resizeObserver.observe(containerRef.current);
-        return () => resizeObserver.disconnect();
-    }, []);
 
-    const getColumnCount = (width) => {
-        if (width < 600) return 1;
-        if (width < 900) return 2;
-        if (width < 1300) return 3;
-        return 4;
-    };
+            return (
+                <div ref={containerRef} className={className} style={{ ...style, height, width, overflow: 'auto', position: 'relative', WebkitOverflowScrolling: 'touch' }} onScroll={handleScroll}>
+                    <div style={{ height: rowCount * rowHeight, width: '100%', position: 'relative' }}>{items}</div>
+                </div>
+            );
+        }));
 
-    const columnCount = dimensions.width > 0 ? getColumnCount(dimensions.width) : 4;
-    const itemWidth = Math.floor((dimensions.width - 4) / columnCount); 
-    const imageRatio = 5 / 4; 
-    const footerHeight = 60; 
-    const itemHeight = (itemWidth * imageRatio) + footerHeight; 
-    const rowCount = Math.ceil(photos.length / columnCount);
+        // === VIRTUAL GRID COMPONENT (Có Ref để App gọi) ===
+        const VirtualPhotoGrid = React.memo(React.forwardRef(({ photos, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, onDownload, downloadedIds }, ref) => {
+            const containerRef = React.useRef(null);
+            const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-    const itemData = useMemo(() => ({
-        photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth, onDownload, downloadedIds 
-    }), [photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth, onDownload, downloadedIds]);
+            useEffect(() => {
+                if (!containerRef.current) return;
+                const resizeObserver = new ResizeObserver(entries => { for (let entry of entries) { setDimensions({ width: entry.contentRect.width, height: entry.contentRect.height }); } });
+                resizeObserver.observe(containerRef.current); return () => resizeObserver.disconnect();
+            }, []);
 
-    const Cell = useCallback(({ columnIndex, rowIndex, style, data }) => {
-        const idx = rowIndex * data.columnCount + columnIndex;
-        if (idx >= data.photos.length) return null;
-        const photo = data.photos[idx];
-        const gap = 12; 
-        const itemStyle = {
-            ...style,
-            width: style.width - gap,
-            height: style.height - gap,
-            left: style.left + (gap / 2),
-            top: style.top + (gap / 2)
-        };
-        return (
-            <div style={itemStyle}>
-                <PhotoCard 
-                    photo={photo} 
-                    viewMode={data.viewMode} 
-                    onToggleSelect={data.onToggleSelect} 
-                    onUpdateComment={data.onUpdateComment} 
-                    onOpenView={data.onOpenView} 
-                    allowComments={data.allowComments} 
-                    onDownload={data.onDownload} 
-                    downloadedIds={data.downloadedIds}
-                    index={idx}
-                />
-            </div>
-        );
-    }, []);
+            const getColumnCount = (width) => {
+                if (width < 600) return 1;
+                if (width < 900) return 2;
+                if (width < 1300) return 3;
+                return 4;
+            };
 
-    if (dimensions.width === 0) return <div ref={containerRef} className="w-full h-full" />;
+            const columnCount = dimensions.width > 0 ? getColumnCount(dimensions.width) : 4;
+            const itemWidth = Math.floor((dimensions.width - 4) / columnCount); 
+            const imageRatio = 5 / 4; 
+            const footerHeight = 60; 
+            const itemHeight = (itemWidth * imageRatio) + footerHeight; 
+            const rowCount = Math.ceil(photos.length / columnCount);
 
-    return (
-        <div ref={containerRef} className="w-full h-full overflow-hidden">
-            <SimpleFixedSizeGrid
-                ref={ref} // <--- Truyền ref xuống SimpleFixedSizeGrid
-                className="ios-scroll-fix"
-                columnCount={columnCount}
-                columnWidth={itemWidth}
-                height={dimensions.height}
-                rowCount={rowCount}
-                rowHeight={itemHeight}
-                width={dimensions.width}
-                itemData={itemData}
-                overscanRowCount={2}
-            >
-                {Cell}
-            </SimpleFixedSizeGrid>      
-        </div>
-    );
-}));
+            const itemData = useMemo(() => ({
+                photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth, onDownload, downloadedIds 
+            }), [photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth, onDownload, downloadedIds]);
 
-        // Trang chủ để người dùng chọn tạo hoặc truy cập album
+            const Cell = useCallback(({ columnIndex, rowIndex, style, data }) => {
+                const idx = rowIndex * data.columnCount + columnIndex;
+                if (idx >= data.photos.length) return null;
+                const photo = data.photos[idx];
+                const gap = 12; 
+                const itemStyle = { ...style, width: style.width - gap, height: style.height - gap, left: style.left + (gap / 2), top: style.top + (gap / 2) };
+                return (
+                    <div style={itemStyle}>
+                        <PhotoCard photo={photo} viewMode={data.viewMode} onToggleSelect={data.onToggleSelect} onUpdateComment={data.onUpdateComment} onOpenView={data.onOpenView} allowComments={data.allowComments} onDownload={data.onDownload} downloadedIds={data.downloadedIds} index={idx} />
+                    </div>
+                );
+            }, []);
+
+            if (dimensions.width === 0) return <div ref={containerRef} className="w-full h-full" />;
+
+            return (
+                <div ref={containerRef} className="w-full h-full overflow-hidden">
+                    <SimpleFixedSizeGrid ref={ref} className="ios-scroll-fix" columnCount={columnCount} columnWidth={itemWidth} height={dimensions.height} rowCount={rowCount} rowHeight={itemHeight} width={dimensions.width} itemData={itemData} overscanRowCount={2}>
+                        {Cell}
+                    </SimpleFixedSizeGrid>      
+                </div>
+            );
+        }));
+
         const AlbumEntryPage = () => {
             const [albumName, setAlbumName] = useState('');
-
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                if (!albumName.trim()) return;
-                const name = albumName.trim();
-                const key = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-                window.location.search = `?album=${key}&name=${encodeURIComponent(name)}`;
-            };
-
+            const handleSubmit = (e) => { e.preventDefault(); if (!albumName.trim()) return; const name = albumName.trim(); const key = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase(); window.location.search = `?album=${key}&name=${encodeURIComponent(name)}`; };
             return (
                 <div className="flex items-center justify-center h-screen bg-gray-50">
                     <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-md w-full shadow-xl">
-                        <div className="flex justify-center mb-6 text-pink-500">
-                            <Icon name="camera" size={40} />
-                        </div>
+                        <div className="flex justify-center mb-6 text-pink-500"><Icon name="camera" size={40} /></div>
                         <h1 className="text-2xl font-bold text-center mb-2 text-gray-900">LensFlow Proofing</h1>
                         <p className="text-sm text-gray-500 text-center mb-8">Client Proofing & Selection</p>
-
                         <form onSubmit={handleSubmit}>
                             <label className="text-sm font-medium text-gray-700 mb-2 block">Tên Album</label>
                             <input type="text" value={albumName} onChange={e => setAlbumName(e.target.value)} autoFocus placeholder="Nhập tên để tạo hoặc truy cập..." className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4 placeholder-gray-400" />
@@ -868,50 +483,24 @@ const VirtualPhotoGrid = React.memo(React.forwardRef(({
             );
         };
 
-        // === APP COMPONENT (Quản lý một album cụ thể) ===
+        // === APP COMPONENT ===
         const App = ({ albumKey, initialAlbumName }) => {
-			const gridRef = React.useRef(null);
+            const gridRef = React.useRef(null); 
+
             const [photos, setPhotos] = useState([]);
             const [viewMode, setViewMode] = useState('CLIENT');
             const [filterMode, setFilterMode] = useState('ALL');
             const [selectedPhoto, setSelectedPhoto] = useState(null);
-			// ==================================================================
-            // [BỔ SUNG] STATE QUẢN LÝ ẢNH ĐÃ TẢI (Lưu trong máy khách)
-            // ==================================================================
-            const [downloadedIds, setDownloadedIds] = useState(() => {
-                try {
-                    // Lấy dữ liệu từ bộ nhớ máy ra ngay khi mở web
-                    const saved = localStorage.getItem(`lensflow_downloaded_${albumKey}`);
-                    return saved ? new Set(JSON.parse(saved)) : new Set();
-                } catch {
-                    return new Set();
-                }
-            });
-
-            // Hàm helper để đánh dấu 1 ảnh là "Đã tải"
-            const markAsDownloaded = useCallback((photoId) => {
-                setDownloadedIds(prev => {
-                    const newSet = new Set(prev);
-                    newSet.add(photoId);
-                    
-                    // Lưu ngay vào bộ nhớ máy (Vĩnh viễn)
-                    localStorage.setItem(`lensflow_downloaded_${albumKey}`, JSON.stringify([...newSet]));
-                    return newSet;
-                });
-            }, [albumKey]);
-            // ==============================================================
+            const [downloadedIds, setDownloadedIds] = useState(() => { try { const saved = localStorage.getItem(`lensflow_downloaded_${albumKey}`); return saved ? new Set(JSON.parse(saved)) : new Set(); } catch { return new Set(); } });
+            const markAsDownloaded = useCallback((photoId) => { setDownloadedIds(prev => { const newSet = new Set(prev); newSet.add(photoId); localStorage.setItem(`lensflow_downloaded_${albumKey}`, JSON.stringify([...newSet])); return newSet; }); }, [albumKey]);
             
-            // Cấu hình Album và Admin
             const [albumName, setAlbumName] = useState(initialAlbumName || "Chưa đặt tên");
-
             const [allowComments, setAllowComments] = useState(true);
             const [adminPassword, setAdminPassword] = useState(""); 
             const [driveApiKey, setDriveApiKey] = useState("");
             const [driveFolders, setDriveFolders] = useState([]);
             const [currentFolderId, setCurrentFolderId] = useState('');
-            
             const [lastSaveTime, setLastSaveTime] = useState(null); 
-            
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [showLoginModal, setShowLoginModal] = useState(false);
             const [passwordInput, setPasswordInput] = useState("");
@@ -924,1187 +513,427 @@ const VirtualPhotoGrid = React.memo(React.forwardRef(({
 			const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 			const cancelDownloadRef = React.useRef(false);
 
-// ====================================================================
-// HÀM DOWNLOAD THÔNG MINH (PC GIỮ NGUYÊN - MOBILE AN TOÀN)
-// ====================================================================
-const handleSmartDownload = async (type) => {
-    setShowDownloadMenu(false);
-    cancelDownloadRef.current = false;
+            const handleSmartDownload = async (type) => {
+                setShowDownloadMenu(false); cancelDownloadRef.current = false;
+                let filesToDownload = []; let locationName = "";
+                let scopePhotos = [];
+                if (currentFolderId && currentFolderId.trim() !== "") {
+                    const folder = driveFolders.find(f => f.id === currentFolderId);
+                    if (folder) { scopePhotos = photos.filter(p => p.folderName === folder.name); locationName = `thư mục "${folder.name}"`; } else { scopePhotos = photos; locationName = "toàn bộ Album"; }
+                } else { scopePhotos = photos; locationName = "toàn bộ Album"; }
 
-    // ============================================================
-    // 1. LỌC ẢNH (Logic chuẩn xác: Tách biệt folder/All)
-    // ============================================================
-    let filesToDownload = [];
-    let locationName = "";
+                if (type === 'SELECTED') { filesToDownload = scopePhotos.filter(p => p.isSelected); locationName += " (Đã chọn)"; } else { filesToDownload = scopePhotos; }
+                if (filesToDownload.length === 0) { return showToast(`Không tìm thấy ảnh nào trong ${locationName}!`, "warning"); }
 
-    // A. Xác định phạm vi (Folder hiện tại hay Toàn bộ)
-    let scopePhotos = [];
-    if (currentFolderId && currentFolderId.trim() !== "") {
-        const folder = driveFolders.find(f => f.id === currentFolderId);
-        if (folder) {
-            scopePhotos = photos.filter(p => p.folderName === folder.name);
-            locationName = `thư mục "${folder.name}"`;
-        } else {
-            scopePhotos = photos; // Fallback
-            locationName = "toàn bộ Album";
-        }
-    } else {
-        scopePhotos = photos;
-        locationName = "toàn bộ Album";
-    }
-
-    // B. Lọc theo yêu cầu (Đã chọn hay Tất cả)
-    if (type === 'SELECTED') {
-        filesToDownload = scopePhotos.filter(p => p.isSelected);
-        locationName += " (Đã chọn)";
-    } else {
-        filesToDownload = scopePhotos;
-    }
-
-    // C. Kiểm tra rỗng
-    if (filesToDownload.length === 0) {
-        return showToast(`Không tìm thấy ảnh nào trong ${locationName}!`, "warning");
-    }
-
-    // ============================================================
-    // 2. PHÂN LOẠI THIẾT BỊ
-    // ============================================================
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|Opera Mini|Mobile/i.test(navigator.userAgent);
-
-    // ============================================================
-    // 3. XỬ LÝ: NẾU LÀ PC (Code của bạn)
-    // ============================================================
-    if (!isMobileDevice && 'showDirectoryPicker' in window) {
-        if (!window.confirm(`💻 CHẾ ĐỘ PC:\nBạn sắp tải ${filesToDownload.length} ảnh về máy tính (${locationName}).\nHệ thống sẽ yêu cầu bạn chọn một thư mục để lưu.`)) return;
-
-        setIsMovingFiles(true);
-        setMoveProgress({ current: 0, total: filesToDownload.length, fileName: 'Đang khởi tạo...' });
-
-        try {
-            // Xin quyền truy cập folder
-            const rootHandle = await window.showDirectoryPicker();
-            // Tạo thêm folder con theo tên Album cho gọn (Option)
-            // const albumFolder = await rootHandle.getDirectoryHandle(albumName || "Album", {create: true}); 
-            
-            let successCount = 0;
-
-            for (let i = 0; i < filesToDownload.length; i++) {
-                if (cancelDownloadRef.current) {
-                    showToast("Đã hủy quá trình tải.", "warning");
-                    break;
+                const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|Opera Mini|Mobile/i.test(navigator.userAgent);
+                if (!isMobileDevice && 'showDirectoryPicker' in window) {
+                    if (!window.confirm(`💻 CHẾ ĐỘ PC:\nBạn sắp tải ${filesToDownload.length} ảnh về máy tính (${locationName}).\nHệ thống sẽ yêu cầu bạn chọn một thư mục để lưu.`)) return;
+                    setIsMovingFiles(true); setMoveProgress({ current: 0, total: filesToDownload.length, fileName: 'Đang khởi tạo...' });
+                    try {
+                        const rootHandle = await window.showDirectoryPicker();
+                        let successCount = 0;
+                        for (let i = 0; i < filesToDownload.length; i++) {
+                            if (cancelDownloadRef.current) { showToast("Đã hủy quá trình tải.", "warning"); break; }
+                            const photo = filesToDownload[i];
+                            setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: photo.name });
+                            try {
+                                let targetUrl = photo.originalUrl;
+                                if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) { targetUrl += `&key=${driveApiKey}`; }
+                                const response = await fetch(targetUrl); if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                                const blob = await response.blob();
+                                const safeFolderName = (photo.folderName || "Khac").replace(/[:\/\\?*|"><]/g, "_");
+                                const folderHandle = await rootHandle.getDirectoryHandle(safeFolderName, { create: true });
+                                const safeFileName = photo.name.replace(/[:\/\\?*|"><]/g, "_");
+                                const fileHandle = await folderHandle.getFileHandle(safeFileName, { create: true });
+                                const writable = await fileHandle.createWritable();
+                                await writable.write(blob); await writable.close();
+                                successCount++;
+                            } catch (err) { console.error(`Lỗi lưu ${photo.name}:`, err); }
+                        }
+                        if (successCount > 0) { showToast(`✅ PC: Đã lưu ${successCount}/${filesToDownload.length} ảnh vào thư mục!`, 'success'); } else { showToast("⚠️ Không lưu được ảnh nào.", "error"); }
+                    } catch (err) { if (err.name !== 'AbortError') showToast("Lỗi PC: " + err.message, "error"); } finally { setIsMovingFiles(false); setMoveProgress({ current: 0, total: 0, fileName: '' }); }
+                } else {
+                    alert("📱 THÔNG BÁO QUAN TRỌNG:\n\n" + `Bạn đang chọn tải ${filesToDownload.length} ảnh.\n\n` + "Chức năng tải hàng loạt CHỈ HỖ TRỢ TRÊN MÁY TÍNH (PC/Laptop).");
                 }
+            };
 
-                const photo = filesToDownload[i];
-                setMoveProgress({ current: i + 1, total: filesToDownload.length, fileName: photo.name });
-
-                try {
-                    // Xử lý URL (Thêm API Key nếu cần)
-                    let targetUrl = photo.originalUrl;
-                    if (photo.isFromDrive && photo.originalUrl && !photo.originalUrl.includes('key=')) {
-                        targetUrl += `&key=${driveApiKey}`;
-                    }
-                    
-                    // Tải Blob (PC Fetch thoải mái hơn nếu link hỗ trợ CORS, hoặc Google Drive Direct link đôi khi vẫn chạy được trên Chrome PC)
-                    const response = await fetch(targetUrl);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    const blob = await response.blob();
-
-                    // Tạo folder con dựa trên tên Folder trong Drive
-                    const safeFolderName = (photo.folderName || "Khac").replace(/[:\/\\?*|"><]/g, "_");
-                    const folderHandle = await rootHandle.getDirectoryHandle(safeFolderName, { create: true });
-                    
-                    // Lưu file
-                    const safeFileName = photo.name.replace(/[:\/\\?*|"><]/g, "_");
-                    const fileHandle = await folderHandle.getFileHandle(safeFileName, { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                    
-                    successCount++;
-                } catch (err) { 
-                    console.error(`Lỗi lưu ${photo.name}:`, err); 
-                    // Nếu fetch lỗi trên PC (do CORS), có thể fallback mở tab tại đây nếu muốn
-                    // window.open(targetUrl, '_blank');
-                }
-            }
-            
-            if (successCount > 0) {
-                showToast(`✅ PC: Đã lưu ${successCount}/${filesToDownload.length} ảnh vào thư mục!`, 'success');
-            } else {
-                showToast("⚠️ Không lưu được ảnh nào. Có thể do chặn truy cập (CORS).", "error");
-            }
-
-        } catch (err) {
-            if (err.name !== 'AbortError') showToast("Lỗi PC: " + err.message, "error");
-        } finally {
-            setIsMovingFiles(false);
-            setMoveProgress({ current: 0, total: 0, fileName: '' });
-        }
-    } 
-    // ============================================================
-    // 4. XỬ LÝ: NẾU LÀ MOBILE (Thông báo hướng dẫn)
-    // ============================================================
-    else {
-        alert(
-            "📱 THÔNG BÁO QUAN TRỌNG:\n\n" +
-            `Bạn đang chọn tải ${filesToDownload.length} ảnh.\n\n` +
-            "Để đảm bảo chất lượng và không bị lỗi mất file, chức năng tải hàng loạt CHỈ HỖ TRỢ TRÊN MÁY TÍNH (PC/Laptop).\n\n" +
-            "👉 Vui lòng mở web này trên máy tính để tải trọn bộ.\n" +
-            "👉 Hoặc tải thủ công từng tấm bằng cách bấm vào ảnh -> nút Tải xuống."
-        );
-    }
-};
-
-
-
-			// [FIX FINAL iOS + ANDROID] Hàm tải 1 ảnh lẻ + Đánh dấu đã tải
             const handleSingleDownload = useCallback((photo) => {
                 if (!photo) return;
-                
                 try {
-                    // 1. Kiểm tra trạng thái cũ để báo thông báo phù hợp
-                    const isDownloaded = downloadedIds.has(photo.id);
-                    const msg = isDownloaded ? `Đang tải lại: ${photo.name}...` : `Đang xử lý: ${photo.name}...`;
-                    showToast(msg, 'info');
-                    
-                    // 2. FILE LOCAL (Upload từ máy lên) -> Dùng saveAs luôn OK
-                    if (photo.originalFile) {
-                        saveAs(photo.originalFile, photo.name);
-                        showToast(`✅ Đã lưu: ${photo.name}`, 'success');
-                        markAsDownloaded(photo.id); // Đánh dấu luôn
-                        return;
-                    } 
+                    const isDownloaded = downloadedIds.has(photo.id); const msg = isDownloaded ? `Đang tải lại: ${photo.name}...` : `Đang xử lý: ${photo.name}...`; showToast(msg, 'info');
+                    if (photo.originalFile) { saveAs(photo.originalFile, photo.name); showToast(`✅ Đã lưu: ${photo.name}`, 'success'); markAsDownloaded(photo.id); return; } 
+                    let downloadUrl = ""; if (photo.isFromDrive) { downloadUrl = `https://drive.google.com/uc?export=download&id=${photo.id}`; downloadUrl += `&t=${Date.now()}`; } else { downloadUrl = photo.originalUrl || photo.url; }
+                    const ua = navigator.userAgent; const isiOS = /iPhone|iPad|iPod/i.test(ua);
+                    if (isiOS) { const tab = window.open(downloadUrl, '_blank'); if (tab) { setTimeout(() => { try { tab.close() } catch{} }, 2000); } } else { const iframe = document.createElement('iframe'); iframe.style.display = 'none'; iframe.src = downloadUrl; document.body.appendChild(iframe); setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 60000); }
+                    markAsDownloaded(photo.id); showToast(`✅ Đã gửi lệnh tải. Hãy kiểm tra máy.`, 'success');
+                } catch (error) { console.error(error); showToast("❌ Lỗi khi tải ảnh", "error"); }
+            }, [downloadedIds, markAsDownloaded, driveApiKey]); 
 
-                    // 3. CHUẨN BỊ URL
-                    let downloadUrl = "";
-                    if (photo.isFromDrive) {
-                        // Link Export ép tải về đúng tên file
-                        downloadUrl = `https://drive.google.com/uc?export=download&id=${photo.id}`;
-                        downloadUrl += `&t=${Date.now()}`; // Chống cache
-                    } else {
-                        downloadUrl = photo.originalUrl || photo.url;
-                    }
-
-                    // 4. KIỂM TRA THIẾT BỊ (Detect iOS)
-                    const ua = navigator.userAgent;
-                    const isiOS = /iPhone|iPad|iPod/i.test(ua);
-
-                    if (isiOS) {
-                        // === DÀNH RIÊNG CHO IPHONE/IPAD ===
-                        // Mở tab mới -> iOS sẽ hiện popup hỏi "Tải về?" chuẩn của hệ thống
-                        const tab = window.open(downloadUrl, '_blank');
-                        
-                        // Tự đóng tab sau 2s
-                        if (tab) {
-                            setTimeout(() => { try { tab.close() } catch{} }, 2000);
-                        }
-                    } else {
-                        // === DÀNH CHO ANDROID / PC ===
-                        // Dùng Iframe ẩn để tải ngầm cho mượt
-                        const iframe = document.createElement('iframe');
-                        iframe.style.display = 'none';
-                        iframe.src = downloadUrl;
-                        document.body.appendChild(iframe);
-
-                        // Dọn dẹp sau 60s
-                        setTimeout(() => {
-                            try { document.body.removeChild(iframe); } catch {}
-                        }, 60000);
-                    }
-
-                    // 5. LƯU TRẠNG THÁI "ĐÃ TẢI" (QUAN TRỌNG)
-                    markAsDownloaded(photo.id); 
-
-                    showToast(`✅ Đã gửi lệnh tải. Hãy kiểm tra máy.`, 'success');
-
-                } catch (error) {
-                    console.error(error);
-                    showToast("❌ Lỗi khi tải ảnh", "error");
-                }
-            }, [downloadedIds, markAsDownloaded, driveApiKey]); // Nhớ thêm dependencies
-//
             const [isInitialized, setIsInitialized] = useState(false); 
             const [showPasscodeModal, setShowPasscodeModal] = useState(true); 
             const [passcodeError, setPasscodeError] = useState(false);
             const [isPasscodeVerified, setIsPasscodeVerified] = useState(false); 
-            // Thêm vào App component
-            const [isLoading, setIsLoading] = useState(true); // Trạng thái mới: Mặc định là đang tải dữ liệu Firebase config
-            const [showAdminPanel, setShowAdminPanel] = useState(false); // State cho Admin Panel trên mobile
+            const [isLoading, setIsLoading] = useState(true); 
+            const [showAdminPanel, setShowAdminPanel] = useState(false); 
             
-            const showToast = useCallback((message, type = 'success') => {
-                setNotification({ message, type });
-                setTimeout(() => setNotification(null), 3000);
-            }, []);
+            const showToast = useCallback((message, type = 'success') => { setNotification({ message, type }); setTimeout(() => setNotification(null), 3000); }, []);
+            const logActivity = (type, details, metadata = {}) => { console.log(`[${viewMode}] ${type}:`, details, metadata); };
 
-            const logActivity = (type, details, metadata = {}) => {
-                console.log(`[${viewMode}] ${type}:`, details, metadata);
-            };
-
-// --- FIREBASE: LISTENER CHÍNH (Đã sửa lỗi không hiển thị Passcode) ---
-useEffect(() => {
-    if (!albumKey) return;
-
-    const photosRef = db.ref(`albums/${albumKey}/current_status/photos`);
-    const configRef = db.ref(`albums/${albumKey}/config`);
-    const savedPasscode = sessionStorage.getItem(`lensflow_passcode_${albumKey}`);
-    const adminToken = localStorage.getItem(`lensflow_admin_token_${albumKey}`);
-
-    let photosListener = null;
-
-    // Hàm xử lý khi đã có quyền truy cập (passcode đúng)
-    const setupAuthenticatedSession = (configData) => {
-        setShowPasscodeModal(false);
-        setIsPasscodeVerified(true);
-
-        // Cập nhật cấu hình từ Firebase
-        setAlbumName(configData.albumName || 'Chưa đặt tên');
-        setDriveFolders(configData.driveFolders || []);
-        setDriveApiKey(configData.driveApiKey || '');
-        setAdminPassword(configData.adminPassword || '');
-        setAllowComments(configData.allowComments !== undefined ? configData.allowComments : true);
-
-        // Chỉ thiết lập listener nếu đã xác thực thành công
-        // Chỉ thiết lập listener nếu chưa có
-			if (!photosListener) {
-				photosListener = photosRef.on('value', (snapshot) => {
-					if (!snapshot.exists()) return;
-					const photosObject = snapshot.val();
-                    let photosArray = objectToArray(photosObject);
-                    // Sắp xếp theo ngày chụp (dateTaken), nếu không có thì theo tên
-                    photosArray.sort(compareDateTaken);
-                    setPhotos(photosArray);
-                    setLastSaveTime(new Date());
-				}, (error) => {
-					console.error("Firebase Photos Read Error:", error);
-					showToast("❌ Lỗi tải dữ liệu ảnh từ Cloud!", 'error');
-				});
-			
-        }
-    };
-
-    // 1. KIỂM TRA TRẠNG THÁI KHỞI TẠO TỪ FIREBASE
-    configRef.once('value').then((snapshot) => {
-        const configData = snapshot.val();
-
-        if (configData && configData.passcode) {
-            // ALBUM ĐÃ KHỞI TẠO
-            setIsInitialized(true);
-
-            // LOGIC XÁC THỰC KHI TẢI LẠI TRANG
-            // Ưu tiên 1: Kiểm tra xem có phải Admin đang quay lại không?
-            if (adminToken && adminToken === configData.adminPassword) {
-                 // -> Đúng, là Admin. Vào thẳng giao diện Admin và tải dữ liệu.
-                 setIsAuthenticated(true);
-                 setViewMode('PHOTOGRAPHER');
-                 setupAuthenticatedSession(configData);
-                 showToast("Chào mừng Admin trở lại!", 'success');
-            } 
-            // Ưu tiên 2: Nếu không phải Admin, kiểm tra xem có phải Khách hàng đã đăng nhập không?
-            else if (savedPasscode && savedPasscode === configData.passcode) {
-                 // -> Đúng, là Khách hàng. Vào giao diện Khách hàng và tải dữ liệu.
-                 setupAuthenticatedSession(configData);
-            } else {
-                 // -> Không phải cả hai. Yêu cầu nhập passcode.
-                 setShowPasscodeModal(true);
-                 setIsPasscodeVerified(false);
-                 localStorage.removeItem(`lensflow_admin_token_${albumKey}`); // Xóa token admin cũ không hợp lệ (nếu có)
-            }
-        } else {
-            // LẦN ĐẦU TRUY CẬP: Chuyển sang chế độ Khởi tạo
-            setIsInitialized(false); 
-            setShowPasscodeModal(true);
-
-            // ĐẶT TRẠNG THÁI ADMIN NGAY LẬP TỨC CHO VIỆC KHỞI TẠO
-            setIsAuthenticated(true);
-            setViewMode('PHOTOGRAPHER');
-        }
-
-        // --- TẮT LOADING SAU KHI XỬ LÝ XONG ---
-        setIsLoading(false);
-
-    }).catch(error => {
-        console.error("Firebase Config Read Error:", error);
-        setIsLoading(false);
-    });
-    
-    // DỌN DẸP
-    return () => {
-        if (photosListener) {
-            photosRef.off('value', photosListener);
-        }
-    }; // Thêm isPasscodeVerified vào dependency array để kích hoạt listener
-}, [albumKey, isPasscodeVerified]);
-
-            // Cập nhật document title khi albumName thay đổi
             useEffect(() => {
-                document.title = `${albumName} - LensFlow`;
-            }, [albumName]);
+                if (!albumKey) return;
+                const photosRef = db.ref(`albums/${albumKey}/current_status/photos`);
+                const configRef = db.ref(`albums/${albumKey}/config`);
+                const savedPasscode = sessionStorage.getItem(`lensflow_passcode_${albumKey}`);
+                const adminToken = localStorage.getItem(`lensflow_admin_token_${albumKey}`);
+                let photosListener = null;
 
-            // Cập nhật cấu hình lên Firebase khi Admin thay đổi (Chỉ Admin Cấu hình)
+                const setupAuthenticatedSession = (configData) => {
+                    setShowPasscodeModal(false); setIsPasscodeVerified(true);
+                    setAlbumName(configData.albumName || 'Chưa đặt tên'); setDriveFolders(configData.driveFolders || []); setDriveApiKey(configData.driveApiKey || ''); setAdminPassword(configData.adminPassword || ''); setAllowComments(configData.allowComments !== undefined ? configData.allowComments : true);
+                    if (!photosListener) {
+                        photosListener = photosRef.on('value', (snapshot) => {
+                            if (!snapshot.exists()) return;
+                            const photosObject = snapshot.val(); let photosArray = objectToArray(photosObject);
+                            photosArray.sort(compareDateTaken); setPhotos(photosArray); setLastSaveTime(new Date());
+                        }, (error) => { console.error("Firebase Photos Read Error:", error); showToast("❌ Lỗi tải dữ liệu ảnh từ Cloud!", 'error'); });
+                    }
+                };
+
+                configRef.once('value').then((snapshot) => {
+                    const configData = snapshot.val();
+                    if (configData && configData.passcode) {
+                        setIsInitialized(true);
+                        if (adminToken && adminToken === configData.adminPassword) { setIsAuthenticated(true); setViewMode('PHOTOGRAPHER'); setupAuthenticatedSession(configData); showToast("Chào mừng Admin trở lại!", 'success'); } 
+                        else if (savedPasscode && savedPasscode === configData.passcode) { setupAuthenticatedSession(configData); } else { setShowPasscodeModal(true); setIsPasscodeVerified(false); localStorage.removeItem(`lensflow_admin_token_${albumKey}`); }
+                    } else { setIsInitialized(false); setShowPasscodeModal(true); setIsAuthenticated(true); setViewMode('PHOTOGRAPHER'); }
+                    setIsLoading(false);
+                }).catch(error => { console.error("Firebase Config Read Error:", error); setIsLoading(false); });
+                return () => { if (photosListener) { photosRef.off('value', photosListener); } }; 
+            }, [albumKey, isPasscodeVerified]);
+
+            useEffect(() => { document.title = `${albumName} - LensFlow`; }, [albumName]);
+
 			const saveConfigToFirebase = useCallback(() => {
 				if (!albumKey || viewMode !== 'PHOTOGRAPHER' || !adminPassword) return; 
-
-				// Lấy passcode hiện tại để đảm bảo không bị ghi đè
-				db.ref(`albums/${albumKey}/config/passcode`).once('value')
-					.then(snapshot => {
-						const currentPasscode = snapshot.val(); 
-						
-						const configData = {
-							driveFolders,
-							driveApiKey,
-							adminPassword,
-							allowComments,
-							albumName,
-							passcode: currentPasscode // SỬ DỤNG PASSCODE HIỆN TẠI
-						};
-
-						db.ref(`albums/${albumKey}/config`).set(configData)
-							.then(() => console.log('✅ Config saved to Firebase'))
-							.catch(err => console.error('❌ Failed to save config:', err));
-					})
-					.catch(err => console.error('❌ Failed to read passcode for autosave:', err));
-
+				db.ref(`albums/${albumKey}/config/passcode`).once('value').then(snapshot => {
+                    const currentPasscode = snapshot.val(); 
+                    const configData = { driveFolders, driveApiKey, adminPassword, allowComments, albumName, passcode: currentPasscode };
+                    db.ref(`albums/${albumKey}/config`).set(configData).then(() => console.log('✅ Config saved')).catch(err => console.error('❌ Failed to save config:', err));
+                }).catch(err => console.error('❌ Failed to read passcode:', err));
 			}, [albumKey, driveFolders, driveApiKey, adminPassword, allowComments, albumName, viewMode]);
 
-            // Auto-save config lên Firebase mỗi khi Admin thay đổi
-            useEffect(() => {
-                const timer = setTimeout(() => saveConfigToFirebase(), 1000); 
-                return () => clearTimeout(timer);
-            }, [driveFolders, driveApiKey, adminPassword, allowComments, saveConfigToFirebase]);
+            useEffect(() => { const timer = setTimeout(() => saveConfigToFirebase(), 1000); return () => clearTimeout(timer); }, [driveFolders, driveApiKey, adminPassword, allowComments, saveConfigToFirebase]);
 
-
-
-            // --- CÁC HÀM CẬP NHẬT TRẠNG THÁI (Ghi tối ưu) ---
-            // FIX: Wrapped in useCallback and used functional updates to maintain stability and performance
             const toggleSelect = useCallback((id) => {
                 setPhotos(prevPhotos => {
-                    const index = prevPhotos.findIndex(p => p.id === id);
-                    if (index === -1) return prevPhotos;
-                    
-                    const p = prevPhotos[index];
-                    const newState = !p.isSelected;
-                    
-                    // Fire and forget sync
-                    db.ref(`albums/${albumKey}/current_status/photos/${id}`)
-                        .update({ isSelected: newState })
-                        .catch(console.error);
-                    
-                    const newPhotos = [...prevPhotos];
-                    newPhotos[index] = { ...p, isSelected: newState };
-                    return newPhotos;
+                    const index = prevPhotos.findIndex(p => p.id === id); if (index === -1) return prevPhotos;
+                    const p = prevPhotos[index]; const newState = !p.isSelected;
+                    db.ref(`albums/${albumKey}/current_status/photos/${id}`).update({ isSelected: newState }).catch(console.error);
+                    const newPhotos = [...prevPhotos]; newPhotos[index] = { ...p, isSelected: newState }; return newPhotos;
                 });
             }, [albumKey]);
 
-            // FIX: Wrapped in useCallback and used functional updates
             const updateComment = useCallback((id, comment) => {
-                // Fire and forget sync (Local state is already handled by PhotoCard via onBlur/onChange)
-                // Here we update the main list source of truth
                 setPhotos(prevPhotos => {
-                    const index = prevPhotos.findIndex(p => p.id === id);
-                    if (index === -1) return prevPhotos;
-                    
-                    const newPhotos = [...prevPhotos];
-                    newPhotos[index] = { ...prevPhotos[index], comments: comment };
-                    return newPhotos;
+                    const index = prevPhotos.findIndex(p => p.id === id); if (index === -1) return prevPhotos;
+                    const newPhotos = [...prevPhotos]; newPhotos[index] = { ...prevPhotos[index], comments: comment }; return newPhotos;
                 });
-
-                db.ref(`albums/${albumKey}/current_status/photos/${id}`)
-                    .update({ comments: comment })
-                    .catch(console.error);
+                db.ref(`albums/${albumKey}/current_status/photos/${id}`).update({ comments: comment }).catch(console.error);
             }, [albumKey]);
             
             const handleFileUpload = async (e) => {
                 const files = e.target.files;
                 if (files) {
                     showToast("Đang xử lý ảnh thumbnail...", "warning");
-
                     const resizeImage = (file, maxSize = 500) => new Promise((resolve) => {
                         const reader = new FileReader();
                         reader.onload = (event) => {
                             const img = new Image();
                             img.onload = () => {
-                                const canvas = document.createElement('canvas');
-                                let { width, height } = img;
-                                if (width > height) {
-                                    if (width > maxSize) { height *= maxSize / width; width = maxSize; }
-                                } else {
-                                    if (height > maxSize) { width *= maxSize / height; height = maxSize; }
-                                }
-                                canvas.width = width;
-                                canvas.height = height;
-                                const ctx = canvas.getContext('2d');
-                                ctx.drawImage(img, 0, 0, width, height);
-                                canvas.toBlob(resolve, 'image/jpeg', 0.8);
-                            };
-                            img.src = event.target.result;
-                        };
-                        reader.readAsDataURL(file);
+                                const canvas = document.createElement('canvas'); let { width, height } = img;
+                                if (width > height) { if (width > maxSize) { height *= maxSize / width; width = maxSize; } } else { if (height > maxSize) { width *= maxSize / height; height = maxSize; } }
+                                canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height); canvas.toBlob(resolve, 'image/jpeg', 0.8);
+                            }; img.src = event.target.result;
+                        }; reader.readAsDataURL(file);
                     });
-
-                    // Đọc EXIF lấy dateTaken
-                    const getDateTaken = (file) => new Promise((resolve) => {
-                        try {
-                            EXIF.getData(file, function() {
-                                let date = EXIF.getTag(this, 'DateTimeOriginal') || EXIF.getTag(this, 'DateTime');
-                                // Chuyển về ISO nếu có
-                                if (date) {
-                                    // date dạng "YYYY:MM:DD HH:MM:SS"
-                                    const parts = date.split(' ');
-                                    if (parts.length === 2) {
-                                        const d = parts[0].replace(/:/g, '-');
-                                        resolve(`${d}T${parts[1]}`);
-                                    } else {
-                                        resolve(date);
-                                    }
-                                } else {
-                                    resolve(null);
-                                }
-                            });
-                        } catch {
-                            resolve(null);
-                        }
-                    });
-
+                    const getDateTaken = (file) => new Promise((resolve) => { try { EXIF.getData(file, function() { let date = EXIF.getTag(this, 'DateTimeOriginal') || EXIF.getTag(this, 'DateTime'); if (date) { const parts = date.split(' '); if (parts.length === 2) { const d = parts[0].replace(/:/g, '-'); resolve(`${d}T${parts[1]}`); } else { resolve(date); } } else { resolve(null); } }); } catch { resolve(null); } });
                     const photoPromises = Array.from(files).map(async (file) => {
-                        const thumbnailBlob = await resizeImage(file);
-                        const dateTaken = await getDateTaken(file);
-                        return {
-                            id: Math.random().toString(36).substr(2, 9),
-                            url: URL.createObjectURL(thumbnailBlob), // URL thumbnail đã giảm dung lượng
-                            originalUrl: URL.createObjectURL(file), // URL ảnh gốc
-                            name: file.name,
-                            isSelected: false,
-                            comments: '',
-                            isFromDrive: false,
-                            originalFile: file,
-                            dateTaken // Thêm trường ngày chụp
-                        };
+                        const thumbnailBlob = await resizeImage(file); const dateTaken = await getDateTaken(file);
+                        return { id: Math.random().toString(36).substr(2, 9), url: URL.createObjectURL(thumbnailBlob), originalUrl: URL.createObjectURL(file), name: file.name, isSelected: false, comments: '', isFromDrive: false, originalFile: file, dateTaken };
                     });
-
                     const newPhotos = await Promise.all(photoPromises);
-                    
                     const photosObject = arrayToObject(newPhotos);
-                    db.ref(`albums/${albumKey}/current_status/photos`).set(photosObject)
-                       .then(() => {
-                           showToast(`✅ Đã thêm ${newPhotos.length} ảnh và đồng bộ!`);
-                           setPhotos(newPhotos); 
-                       })
-                       .catch(error => showToast(`Lỗi tải lên Firebase: ${error.message}`, 'error'));
+                    db.ref(`albums/${albumKey}/current_status/photos`).set(photosObject).then(() => { showToast(`✅ Đã thêm ${newPhotos.length} ảnh và đồng bộ!`); setPhotos(newPhotos); }).catch(error => showToast(`Lỗi tải lên Firebase: ${error.message}`, 'error'));
                 }
             };
 
-            // --- LOGIC SYNC DRIVE (Đẩy cả Photos và Config lên Firebase) ---
 			const syncDataToFirebase = (newPhotosArray, currentFolders, currentApiKey) => {
-				
-				// Lấy Passcode hiện tại (để bảo tồn nó)
-				return db.ref(`albums/${albumKey}/config/passcode`).once('value')
-					.then(snapshot => {
-						const currentPasscode = snapshot.val();
-						
-						// 1. Dữ liệu Cấu hình
-						const configData = {
-							driveFolders: currentFolders,
-							driveApiKey: currentApiKey,
-							adminPassword: adminPassword,
-							allowComments: allowComments,
-							albumName,
-							passcode: currentPasscode // SỬ DỤNG PASSCODE ĐÃ LẤY ĐƯỢC
-						};
-				
-						// 2. Multi-path update
-						const photosObject = arrayToObject(newPhotosArray);
-						
-						const updates = {};
-						updates[`albums/${albumKey}/current_status/photos`] = photosObject;
-						updates[`albums/${albumKey}/config`] = configData;
-
-						// Thực hiện update
-						return db.ref().update(updates);
-					});
-				// Lưu ý: Hàm gọi (syncAllFolders) phải xử lý .catch() sau khi gọi hàm này
+				return db.ref(`albums/${albumKey}/config/passcode`).once('value').then(snapshot => {
+                    const currentPasscode = snapshot.val();
+                    const configData = { driveFolders: currentFolders, driveApiKey: currentApiKey, adminPassword: adminPassword, allowComments: allowComments, albumName, passcode: currentPasscode };
+                    const photosObject = arrayToObject(newPhotosArray); const updates = {};
+                    updates[`albums/${albumKey}/current_status/photos`] = photosObject; updates[`albums/${albumKey}/config`] = configData;
+                    return db.ref().update(updates);
+                });
 			};
 
-            // === [BẮT ĐẦU ĐOẠN CODE SỬA ĐỔI] ===
             const syncAllFolders = async () => {
                 if (!driveApiKey) { showToast("Thiếu API Key", "error"); return; }
                 const validFolders = driveFolders.filter(f => f.id && f.id.trim());
                 if (validFolders.length === 0) { showToast("Chưa có Folder ID hợp lệ", "error"); return; }
-
-                // Hỏi ý kiến nếu đã có dữ liệu cũ
                 const existingSelections = photos.filter(p => p.isSelected || p.comments);
-                if (existingSelections.length > 0) {
-                    const confirm = window.confirm(
-                        `Bạn đã có ${existingSelections.length} ảnh đã chọn/comment.\n\n` +
-                        `CHỌN "OK" để GIỮ lựa chọn cũ và sync lại danh sách.\n` +
-                        `CHỌN "Cancel" để hủy bỏ.`
-                    );
-                    if (!confirm) return;
-                }
-
-                setIsSyncingDrive(true);
-                setSyncProgress({ current: 0, total: 0, folderName: 'Đang kết nối API...' });
-                
+                if (existingSelections.length > 0) { const confirm = window.confirm(`Bạn đã có ${existingSelections.length} ảnh đã chọn/comment.\n\n` + `CHỌN "OK" để GIỮ lựa chọn cũ và sync lại danh sách.\n` + `CHỌN "Cancel" để hủy bỏ.`); if (!confirm) return; }
+                setIsSyncingDrive(true); setSyncProgress({ current: 0, total: 0, folderName: 'Đang kết nối API...' });
                 try {
-                    let allPhotosFromAllFolders = [];
-                    const existingMap = new Map(photos.map(p => [p.id, p]));
-
+                    let allPhotosFromAllFolders = []; const existingMap = new Map(photos.map(p => [p.id, p]));
                     for (let i = 0; i < validFolders.length; i++) {
-                        const folder = validFolders[i];
-                        setSyncProgress({ current: 0, total: 0, folderName: `Đang quét: ${folder.name}` });
-
-                        let folderFiles = [];
-                        let pageToken = null;
-
+                        const folder = validFolders[i]; setSyncProgress({ current: 0, total: 0, folderName: `Đang quét: ${folder.name}` });
+                        let folderFiles = []; let pageToken = null;
                         do {
-                            // [THAY ĐỔI QUAN TRỌNG]: Thêm 'createdTime' và 'imageMediaMetadata' vào fields
-                            // imageMediaMetadata chứa thời gian chụp (time) mà không cần tải ảnh
                             let url = `https://www.googleapis.com/drive/v3/files?q='${folder.id}'+in+parents+and+mimeType+contains+'image/'&fields=nextPageToken,files(id,name,thumbnailLink,webContentLink,createdTime,imageMediaMetadata)&key=${driveApiKey}&pageSize=100`;
                             if (pageToken) url += `&pageToken=${pageToken}`;
-
-                            const res = await fetch(url);
-                            const data = await res.json();
-
+                            const res = await fetch(url); const data = await res.json();
                             if (data.error) throw new Error(`${folder.name}: ${data.error.message}`);
-
                             if (data.files && data.files.length > 0) {
-                                // Xử lý dữ liệu ngay tại đây
                                 const processedFiles = data.files.map(f => {
-                                    // 1. Lấy ngày chụp từ Metadata của Drive (Cực nhanh)
                                     let dateTaken = null;
-                                    
-                                    // Ưu tiên 1: Thời gian chụp gốc từ Camera
-                                    if (f.imageMediaMetadata && f.imageMediaMetadata.time) {
-                                        // Định dạng Drive trả về thường là: "YYYY:MM:DD HH:MM:SS"
-                                        // Cần đổi sang ISO: "YYYY-MM-DDTHH:MM:SS"
-                                        const parts = f.imageMediaMetadata.time.split(' ');
-                                        if (parts.length === 2) {
-                                            dateTaken = parts[0].replace(/:/g, '-') + 'T' + parts[1];
-                                        } else {
-                                            dateTaken = f.imageMediaMetadata.time;
-                                        }
-                                    } 
-                                    // Ưu tiên 2: Thời gian file được tạo trên Drive (Upload time)
-                                    else if (f.createdTime) {
-                                        dateTaken = f.createdTime;
-                                    }
-
+                                    if (f.imageMediaMetadata && f.imageMediaMetadata.time) { const parts = f.imageMediaMetadata.time.split(' '); if (parts.length === 2) { dateTaken = parts[0].replace(/:/g, '-') + 'T' + parts[1]; } else { dateTaken = f.imageMediaMetadata.time; } } else if (f.createdTime) { dateTaken = f.createdTime; }
                                     const existing = existingMap.get(f.id);
-
-                                    return {
-                                        id: f.id,
-                                        // Dùng link thumbnail chuẩn của Google
-                                        url: `https://drive.google.com/thumbnail?id=${f.id}&sz=w300`, 
-                                        lightboxUrl: `https://drive.google.com/thumbnail?id=${f.id}&sz=w1600`,
-                                        // Link tải gốc
-                                        originalUrl: `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${driveApiKey}`,
-                                        name: f.name,
-                                        folderName: folder.name,
-                                        isSelected: existing?.isSelected || false,
-                                        comments: existing?.comments || '',
-                                        isFromDrive: true,
-                                        dateTaken: dateTaken // Đã có dateTaken mà không cần tải blob
-                                    };
+                                    return { id: f.id, url: `https://drive.google.com/thumbnail?id=${f.id}&sz=w300`, lightboxUrl: `https://drive.google.com/thumbnail?id=${f.id}&sz=w1600`, originalUrl: `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${driveApiKey}`, name: f.name, folderName: folder.name, isSelected: existing?.isSelected || false, comments: existing?.comments || '', isFromDrive: true, dateTaken: dateTaken };
                                 });
-                                
                                 folderFiles = [...folderFiles, ...processedFiles];
                             }
-
                             pageToken = data.nextPageToken;
                         } while (pageToken);
-
-                        allPhotosFromAllFolders = [...allPhotosFromAllFolders, ...folderFiles];
-                        showToast(`✅ ${folder.name}: Đã tìm thấy ${folderFiles.length} ảnh`, 'success');
+                        allPhotosFromAllFolders = [...allPhotosFromAllFolders, ...folderFiles]; showToast(`✅ ${folder.name}: Đã tìm thấy ${folderFiles.length} ảnh`, 'success');
                     }
-
-                    // Sắp xếp lại toàn bộ danh sách
                     setSyncProgress({ current: 100, total: 100, folderName: 'Đang sắp xếp & Lưu...' });
                     allPhotosFromAllFolders.sort(compareDateTaken);
-
-                    // Gửi lên Firebase
                     await syncDataToFirebase(allPhotosFromAllFolders, validFolders, driveApiKey);
-
-                    showToast(`✅ Hoàn tất! Đã đồng bộ ${allPhotosFromAllFolders.length} ảnh siêu tốc!`);
-                    logActivity('SYNC_ALL_FOLDERS', `Fast Sync: ${allPhotosFromAllFolders.length} items`);
-                    
-                } catch (error) {
-                    console.error(error);
-                    showToast("Lỗi Sync: " + error.message, "error");
-                } finally {
-                    setIsSyncingDrive(false);
-                    setSyncProgress({ current: 0, total: 0, folderName: '' });
-                }
+                    showToast(`✅ Hoàn tất! Đã đồng bộ ${allPhotosFromAllFolders.length} ảnh siêu tốc!`); logActivity('SYNC_ALL_FOLDERS', `Fast Sync: ${allPhotosFromAllFolders.length} items`);
+                } catch (error) { console.error(error); showToast("Lỗi Sync: " + error.message, "error"); } finally { setIsSyncingDrive(false); setSyncProgress({ current: 0, total: 0, folderName: '' }); }
             };
-            // === [KẾT THÚC ĐOẠN CODE SỬA ĐỔI] ===
-            
-            // --- HÀM BACKUP/RESTORE CHUYỂN SANG SNAPSHOT ---
             
             const handleSaveSnapshot = () => {
                 const timestampKey = new Date().toISOString().replace(/\./g, '-');
-                
                 const photosObject = photos.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
-                
-                const snapshotData = { 
-                    photos: photosObject, 
-                    config: { driveFolders, allowComments, adminPassword, driveApiKey, albumName }, 
-                    metadata: { 
-                        timestamp: new Date().toLocaleString('vi-VN'),
-                        selectedCount: photos.filter(p => p.isSelected).length 
-                    }
-                };
-
-                db.ref(`albums/${albumKey}/history/${timestampKey}`).set(snapshotData)
-                    .then(() => showToast(`✅ Đã lưu Snapshot phiên bản: ${new Date().toLocaleTimeString('vi-VN')}`, 'success'))
-                    .catch(error => showToast(`Lỗi lưu lịch sử: ${error.message}`, 'error'));
+                const snapshotData = { photos: photosObject, config: { driveFolders, allowComments, adminPassword, driveApiKey, albumName }, metadata: { timestamp: new Date().toLocaleString('vi-VN'), selectedCount: photos.filter(p => p.isSelected).length } };
+                db.ref(`albums/${albumKey}/history/${timestampKey}`).set(snapshotData).then(() => showToast(`✅ Đã lưu Snapshot`, 'success')).catch(error => showToast(`Lỗi: ${error.message}`, 'error'));
             };
             
-            // --- CÁC HÀM KHÁC GIỮ NGUYÊN ---
             const handleDownloadReport = () => {
-    // 1. Lọc các ảnh đã được chọn (isSelected: true)
-    const selected = photos.filter(p => p.isSelected);
-    
-    if (!selected.length) { 
-        showToast("Chưa chọn ảnh", "warning"); 
-        return; 
-    }
-    
-    let content = `BÁO CÁO - ${albumName.toUpperCase()}\nNgày: ${new Date().toLocaleString('vi-VN')}\nSố lượng: ${selected.length}\n${'='.repeat(50)}\n\n`;
-    
-    // Ghi log để kiểm tra
-    console.log(`Báo cáo đang xử lý ${selected.length} ảnh đã chọn...`);
-    
-    // 2. Nhóm ảnh theo folder (folderName)
-    const groupedByFolder = {};
-    selected.forEach(p => {
-        // Sử dụng folderName hoặc giá trị mặc định nếu thiếu
-        const folderName = p.folderName || 'Không rõ thư mục'; 
-        if (!groupedByFolder[folderName]) {
-            groupedByFolder[folderName] = [];
-        }
-        groupedByFolder[folderName].push(p);
-    });
-    
-    // 3. Xây dựng nội dung file (.txt)
-    Object.keys(groupedByFolder).forEach(folderName => {
-        content += `\n\n┌${'\u2500'.repeat(48)}\u2510\n`;
-        content += `│  ${folderName.toUpperCase().padEnd(46)}│\n`;
-        content += `└${'\u2500'.repeat(48)}\u2518\n\n`;
-        
-        groupedByFolder[folderName].forEach((p, i) => {
-            // Chuẩn hóa ghi chú: loại bỏ khoảng trắng và thay thế bằng '(Không có ghi chú)' nếu rỗng
-            const commentText = p.comments && p.comments.trim() ? p.comments : "(Không có ghi chú)";
-            
-            content += `${i + 1}. ${p.name}\n   ${commentText}\n${'='.repeat(50)}\n`;
-        });
-    });
+                const selected = photos.filter(p => p.isSelected);
+                if (!selected.length) { showToast("Chưa chọn ảnh", "warning"); return; }
+                let content = `BÁO CÁO - ${albumName.toUpperCase()}\nNgày: ${new Date().toLocaleString('vi-VN')}\nSố lượng: ${selected.length}\n${'='.repeat(50)}\n\n`;
+                const groupedByFolder = {};
+                selected.forEach(p => { const folderName = p.folderName || 'Không rõ thư mục'; if (!groupedByFolder[folderName]) { groupedByFolder[folderName] = []; } groupedByFolder[folderName].push(p); });
+                Object.keys(groupedByFolder).forEach(folderName => {
+                    content += `\n\n┌${'\u2500'.repeat(48)}\u2510\n│  ${folderName.toUpperCase().padEnd(46)}│\n└${'\u2500'.repeat(48)}\u2518\n\n`;
+                    groupedByFolder[folderName].forEach((p, i) => { const commentText = p.comments && p.comments.trim() ? p.comments : "(Không có ghi chú)"; content += `${i + 1}. ${p.name}\n   ${commentText}\n${'='.repeat(50)}\n`; });
+                });
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' }); const link = document.createElement('a');
+                const filename = `Order_${albumName.replace(/\s+/g, '_')}.txt`; link.download = filename; link.href = URL.createObjectURL(blob); document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(link.href); showToast("Đã xuất file!", 'success');
+            };
 
-    // Ghi log nội dung file đã hoàn thành
-    console.log('Nội dung báo cáo đã tạo:', content); 
-    
-    // 4. Tạo Blob và Download File (Tăng độ tin cậy)
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const link = document.createElement('a');
-    
-    // Tạo tên file an toàn
-    const filename = `Order_${albumName.replace(/\s+/g, '_')}.txt`;
-    link.download = filename; 
-    
-    link.href = URL.createObjectURL(blob);
-    
-    // Thao tác download: Chèn vào DOM, click, và gỡ bỏ để tránh bị chặn pop-up
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Thu hồi URL object để giải phóng bộ nhớ
-    URL.revokeObjectURL(link.href);
-
-    showToast("Đã xuất file!", 'success');
-};
             const handleMoveToFinal = async () => {
-    const selected = photos.filter(p => p.isSelected);
-    if (!selected.length) { 
-        showToast("Chưa có ảnh nào được chọn", "warning"); 
-        return; 
-    }
-
-    setIsMovingFiles(true);
-    setMoveProgress({ current: 0, total: selected.length, fileName: '' });
-    
-    // Kiểm tra hỗ trợ File System Access API (Lưu trực tiếp vào folder)
-    if ('showDirectoryPicker' in window) {
-        try {
-            // Cho phép user chọn folder đích
-            const dirHandle = await window.showDirectoryPicker();
-            let successCount = 0;
-            let failCount = 0;
-
-            // Lưu từng file vào folder đã chọn
-            for (let i = 0; i < selected.length; i++) {
-                const photo = selected[i];
-                setMoveProgress({ current: i + 1, total: selected.length, fileName: photo.name });
-                
-                try {
-                    let blob;
-                    
-                    if (photo.originalFile) {
-                        // Nếu là file local (khi upload bằng input), dùng file gốc
-                        blob = photo.originalFile;
-                    } 
-                    else if (photo.isFromDrive && photo.originalUrl) {
-                        // Nếu từ Drive, tải file gốc (dùng originalUrl với API Key)
-                        const response = await fetch(photo.originalUrl);
-                        if (!response.ok) throw new Error(`Không thể tải file gốc từ Drive (Status: ${response.status})`);
-                        blob = await response.blob();
+                const selected = photos.filter(p => p.isSelected); if (!selected.length) { showToast("Chưa có ảnh nào được chọn", "warning"); return; }
+                setIsMovingFiles(true); setMoveProgress({ current: 0, total: selected.length, fileName: '' });
+                if ('showDirectoryPicker' in window) {
+                    try {
+                        const dirHandle = await window.showDirectoryPicker(); let successCount = 0; let failCount = 0;
+                        for (let i = 0; i < selected.length; i++) {
+                            const photo = selected[i]; setMoveProgress({ current: i + 1, total: selected.length, fileName: photo.name });
+                            try {
+                                let blob;
+                                if (photo.originalFile) { blob = photo.originalFile; } 
+                                else if (photo.isFromDrive && photo.originalUrl) { const response = await fetch(photo.originalUrl); if (!response.ok) throw new Error(`Lỗi`); blob = await response.blob(); }
+                                else { const response = await fetch(photo.url); if (!response.ok) throw new Error("Lỗi"); blob = await response.blob(); }
+                                const fileHandle = await dirHandle.getFileHandle(photo.name, { create: true }); const writable = await fileHandle.createWritable(); await writable.write(blob); await writable.close(); successCount++;
+                            } catch (err) { failCount++; }
+                        }
+                        setMoveProgress({ current: 0, total: 0, fileName: '' }); showToast(`✅ Đã lưu ${successCount}/${selected.length} ảnh!`, 'success');
+                    } catch (err) { if (err.name !== 'AbortError') { showToast("Lỗi: " + err.message, "error"); } setMoveProgress({ current: 0, total: 0, fileName: '' }); }
+                } else {
+                    showToast("Trình duyệt không hỗ trợ chọn folder. Đang tải xuống từng file...", "warning");
+                    for (let i = 0; i < selected.length; i++) {
+                        const photo = selected[i]; setMoveProgress({ current: i + 1, total: selected.length, fileName: photo.name });
+                        const downloadUrl = photo.originalUrl || photo.url; await new Promise(resolve => setTimeout(resolve, 300));
+                        const link = document.createElement('a'); link.href = downloadUrl; link.download = photo.name; document.body.appendChild(link); link.click(); document.body.removeChild(link);
                     }
-                    else {
-                        // Fallback: dùng URL hiện tại (có thể là thumbnail nếu originalUrl lỗi)
-                        const response = await fetch(photo.url);
-                        if (!response.ok) throw new Error("Không thể tải ảnh (Fallback URL)");
-                        blob = await response.blob();
-                    }
-                    
-                    const fileHandle = await dirHandle.getFileHandle(photo.name, { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                    successCount++;
-                } catch (err) {
-                    console.error(`Lỗi lưu ${photo.name}:`, err);
-                    failCount++;
+                    setMoveProgress({ current: 0, total: 0, fileName: '' }); showToast(`Đã tải ${selected.length} ảnh!`, 'success');
                 }
-            }
+                setIsMovingFiles(false);
+            };
 
-            setMoveProgress({ current: 0, total: 0, fileName: '' });
-            
-            if (successCount > 0) {
-                showToast(`✅ Đã lưu ${successCount}/${selected.length} ảnh gốc vào folder!${failCount > 0 ? ` (Lỗi: ${failCount})` : ''}`, 'success');
-            } else {
-                showToast("❌ Không thể lưu ảnh nào. Vui lòng kiểm tra console.", "error");
-            }
-        } catch (err) {
-            if (err.name !== 'AbortError') {
-                console.error(err);
-                showToast("Lỗi khi chọn folder: " + err.message, "error");
-            }
-            setMoveProgress({ current: 0, total: 0, fileName: '' });
-        }
-    } else {
-        // Fallback: Tải xuống từng file nếu trình duyệt không hỗ trợ File System Access API
-        showToast("Trình duyệt không hỗ trợ chọn folder. Đang tải xuống từng file...", "warning");
-        
-        for (let i = 0; i < selected.length; i++) {
-            const photo = selected[i];
-            setMoveProgress({ current: i + 1, total: selected.length, fileName: photo.name });
-            
-            // Dùng Original URL (hoặc URL thumbnail nếu không có) để tải về
-            const downloadUrl = photo.originalUrl || photo.url; 
-            
-            // Chờ một chút giữa các lần tải để tránh bị trình duyệt chặn
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = photo.name;
-            
-            // Thực hiện download
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-        
-        setMoveProgress({ current: 0, total: 0, fileName: '' });
-        showToast(`Đã tải ${selected.length} ảnh xuống thư mục Downloads!`, 'success');
-    }
-    
-    setIsMovingFiles(false);
-};
-// Hàm Khởi tạo Album lần đầu
-const handleInitializeAlbum = (adminPasswordInput, newPasscodeInput) => {
-    // 1. Kiểm tra dữ liệu đầu vào cơ bản
-    if (adminPasswordInput.length < 4 || newPasscodeInput.length < 4) {
-        setPasscodeError("Mật khẩu Admin và Passcode Khách hàng phải có ít nhất 4 ký tự.");
-        return;
-    }
+            const handleInitializeAlbum = (adminPasswordInput, newPasscodeInput) => {
+                if (adminPasswordInput.length < 4 || newPasscodeInput.length < 4) { setPasscodeError("Mật khẩu Admin và Passcode Khách hàng phải có ít nhất 4 ký tự."); return; }
+                localStorage.setItem(`lensflow_admin_token_${albumKey}`, adminPasswordInput);
+                const configData = { driveFolders: [], driveApiKey: '', adminPassword: adminPasswordInput, allowComments: true, passcode: newPasscodeInput, albumName };
+                const updates = {}; updates[`albums/${albumKey}/config`] = configData; updates[`albums/${albumKey}/current_status/photos`] = {}; 
+                db.ref().update(updates).then(() => {
+                    sessionStorage.setItem(`lensflow_passcode_${albumKey}`, newPasscodeInput);
+                    setAdminPassword(adminPasswordInput); setIsInitialized(true); setIsPasscodeVerified(true); setShowPasscodeModal(false); setIsAuthenticated(true); setViewMode('PHOTOGRAPHER'); 
+                    const photosRef = db.ref(`albums/${albumKey}/current_status/photos`);
+                    photosRef.on('value', (snapshot) => { if (!snapshot.exists()) return; const photosObject = snapshot.val(); const photosArray = objectToArray(photosObject); setPhotos(photosArray); setLastSaveTime(new Date()); });
+                    showToast("✅ Khởi tạo thành công!", 'success');
+                }).catch(err => { console.error(err); setPasscodeError("Lỗi Firebase."); });
+            };
 
-        // Lưu token Admin vào localStorage để tự động đăng nhập lại
-        localStorage.setItem(`lensflow_admin_token_${albumKey}`, adminPasswordInput);
-    
-    // 2. Dữ liệu cấu hình lần đầu (ĐẢM BẢO PASSCODE CÓ MẶT)
-    const configData = {
-        driveFolders: [],
-        driveApiKey: '',
-        adminPassword: adminPasswordInput,
-        allowComments: true,
-        passcode: newPasscodeInput, // <-- PASSCODE ĐƯỢC THIẾT LẬP Ở ĐÂY
-        albumName // Sử dụng albumName từ state, được truyền từ URL
-    };
-    
-    // 3. Chuẩn bị Multi-path update
-    const updates = {};
-    updates[`albums/${albumKey}/config`] = configData;
-    updates[`albums/${albumKey}/current_status/photos`] = {}; 
-    
-    // 4. Ghi dữ liệu lên Firebase
-    db.ref().update(updates)
-        .then(() => {
-            // --- THÀNH CÔNG GHI FIREBASE ---
+            const handlePasscodeAccess = async (inputPasscode) => {
+                setPasscodeError(false);
+                try {
+                    const snapshot = await db.ref(`albums/${albumKey}/config`).once('value'); const configData = snapshot.val();
+                    if (configData && inputPasscode === configData.passcode) {
+                        sessionStorage.setItem(`lensflow_passcode_${albumKey}`, inputPasscode);
+                        setAlbumName(configData.albumName || 'Chưa đặt tên'); setDriveFolders(configData.driveFolders || []); setDriveApiKey(configData.driveApiKey || ''); setAdminPassword(configData.adminPassword || ''); setAllowComments(configData.allowComments !== undefined ? configData.allowComments : true);
+                        setShowPasscodeModal(false); setIsPasscodeVerified(true); setViewMode('CLIENT'); showToast("✅ Truy cập thành công!");
+                    } else { setPasscodeError(true); }
+                } catch(e) { setPasscodeError(true); }
+            };
 
-            // Lưu Passcode vào Session để Admin truy cập lại không cần nhập
-            sessionStorage.setItem(`lensflow_passcode_${albumKey}`, newPasscodeInput);
-            
-            // Cập nhật state Admin và truy cập
-            setAdminPassword(adminPasswordInput);
-            setIsInitialized(true); // Đánh dấu đã khởi tạo
-            setIsPasscodeVerified(true); // Đã xác thực Passcode
-            setShowPasscodeModal(false);
-            setIsAuthenticated(true);
-            setViewMode('PHOTOGRAPHER'); // Chuyển sang chế độ Admin
-            
-            // 5. Thiết lập Listener Photos ngay sau khi khởi tạo thành công
-            const photosRef = db.ref(`albums/${albumKey}/current_status/photos`);
-            photosRef.on('value', (snapshot) => {
-                if (!snapshot.exists()) return; 
-                const photosObject = snapshot.val();
-                const photosArray = objectToArray(photosObject); 
-                setPhotos(photosArray);
-                setLastSaveTime(new Date()); 
-            });
-
-            showToast("✅ Khởi tạo thành công! Bạn đang ở chế độ Admin.", 'success');
-        })
-        .catch(err => {
-            // Xử lý lỗi Firebase
-            console.error("Lỗi Firebase khi khởi tạo:", err);
-            setPasscodeError("Lỗi Firebase khi khởi tạo. Vui lòng kiểm tra Console (F12).");
-        });
-};
-
-
-
-// Hàm xác thực Passcode (cho Khách hàng và Admin khi album đã có)
-const handlePasscodeAccess = async (inputPasscode) => {
-    setPasscodeError(false);
-    
-    // Sửa lỗi: Thay vì chỉ lấy passcode, chúng ta lấy toàn bộ config
-    try {
-        const snapshot = await db.ref(`albums/${albumKey}/config`).once('value');
-        const configData = snapshot.val();
-        
-        if (configData && inputPasscode === configData.passcode) {
-            // --- THÀNH CÔNG ---
-            sessionStorage.setItem(`lensflow_passcode_${albumKey}`, inputPasscode);
-
-            // Cập nhật state để kích hoạt useEffect tải ảnh
-            setAlbumName(configData.albumName || 'Chưa đặt tên');
-            setDriveFolders(configData.driveFolders || []);
-            setDriveApiKey(configData.driveApiKey || '');
-            setAdminPassword(configData.adminPassword || '');
-            setAllowComments(configData.allowComments !== undefined ? configData.allowComments : true);
-
-            setShowPasscodeModal(false);
-            setIsPasscodeVerified(true); // <-- Dòng này sẽ kích hoạt useEffect để tải ảnh
-
-            setViewMode('CLIENT'); // Mặc định là Client
-            showToast("✅ Truy cập thành công!");
-        } else {
-            // --- THẤT BẠI ---
-            setPasscodeError(true);
-        }
-    } catch(e) {
-        console.error("Lỗi xác thực Passcode:", e);
-        setPasscodeError(true);
-    }
-};
-
-const handleLogin = () => {
-    if (adminPassword && passwordInput === adminPassword) {
-        setIsAuthenticated(true);
-        setShowLoginModal(false);
-        setLoginError(false);
-        setPasswordInput("");
-        localStorage.setItem(`lensflow_admin_token_${albumKey}`, passwordInput);
-        
-        // --- CẬP NHẬT TRẠNG THÁI ---
-        setViewMode('PHOTOGRAPHER');
-        setShowAdminPanel(true); // <--- Bắt buộc phải có dòng này
-        // ---------------------------
-        
-        setShowPasscodeModal(false);
-        setIsPasscodeVerified(true);
-        showToast("🔓 Đăng nhập Admin thành công!", "success");
-    } else {
-        setLoginError(true);
-        showToast("Mật khẩu không đúng", "error");
-    }
-};
+            const handleLogin = () => {
+                if (adminPassword && passwordInput === adminPassword) { setIsAuthenticated(true); setShowLoginModal(false); setLoginError(false); setPasswordInput(""); localStorage.setItem(`lensflow_admin_token_${albumKey}`, passwordInput); setViewMode('PHOTOGRAPHER'); setShowAdminPanel(true); setShowPasscodeModal(false); setIsPasscodeVerified(true); showToast("🔓 Đăng nhập Admin thành công!", "success"); } else { setLoginError(true); showToast("Mật khẩu không đúng", "error"); }
+            };
 
             const filteredPhotos = useMemo(() => {
                 let result = photos;
-
-                // Sửa lỗi: Áp dụng bộ lọc thư mục cho cả Admin và Client
-                if (currentFolderId) {
-                    const folderName = driveFolders.find(f => f.id === currentFolderId)?.name;
-                    result = result.filter(p => p.folderName === folderName);
-                }
-
-                if (filterMode === 'SELECTED') {
-                    result = result.filter(p => p.isSelected);
-                }
-                
+                if (currentFolderId) { const folderName = driveFolders.find(f => f.id === currentFolderId)?.name; result = result.filter(p => p.folderName === folderName); }
+                if (filterMode === 'SELECTED') { result = result.filter(p => p.isSelected); }
                 return result;
             }, [photos, filterMode, currentFolderId, viewMode, driveFolders]);
             
             const selectedCount = useMemo(() => photos.filter(p => p.isSelected).length, [photos]);
-
-            // Tính toán số liệu cho bộ đếm trong view hiện tại
             const viewStats = useMemo(() => {
-                // Lấy danh sách ảnh đã được lọc theo thư mục (chưa lọc theo "SELECTED")
-                let baseFiltered = photos;
-                if (currentFolderId) {
-                    const folderName = driveFolders.find(f => f.id === currentFolderId)?.name;
-                    baseFiltered = baseFiltered.filter(p => p.folderName === folderName);
-                }
-                
-                const selectedInView = baseFiltered.filter(p => p.isSelected).length;
-                const totalInView = baseFiltered.length;
-
+                let baseFiltered = photos; if (currentFolderId) { const folderName = driveFolders.find(f => f.id === currentFolderId)?.name; baseFiltered = baseFiltered.filter(p => p.folderName === folderName); }
+                const selectedInView = baseFiltered.filter(p => p.isSelected).length; const totalInView = baseFiltered.length;
                 return { selected: selectedInView, total: totalInView };
             }, [photos, currentFolderId, driveFolders]);
 
-            const selectedPhotoIndex = useMemo(() => {
-                return selectedPhoto ? filteredPhotos.findIndex(p => p.id === selectedPhoto.id) : -1;
-            }, [selectedPhoto, filteredPhotos]);
+            const selectedPhotoIndex = useMemo(() => { return selectedPhoto ? filteredPhotos.findIndex(p => p.id === selectedPhoto.id) : -1; }, [selectedPhoto, filteredPhotos]);
             
-            // Tìm hàm cũ và thay bằng đoạn này:
             const handlePhotoChange = useCallback((newPhoto) => {
                 setSelectedPhoto(newPhoto);
-
-                // --- [LOGIC MỚI] ĐỒNG BỘ CUỘN ---
-                // Khi đổi ảnh trong Lightbox, tìm vị trí ảnh đó trong lưới và cuộn tới
+                // --- [LOGIC MỚI] Đồng bộ cuộn ---
                 if (gridRef.current && filteredPhotos.length > 0) {
                     const index = filteredPhotos.findIndex(p => p.id === newPhoto.id);
-                    if (index !== -1) {
-                        gridRef.current.scrollToItem(index);
-                    }
+                    if (index !== -1) { gridRef.current.scrollToItem(index); }
                 }
-            }, [filteredPhotos]); // <--- Quan trọng: Phải có filteredPhotos trong ngoặc vuông này
+            }, [filteredPhotos]);
 
-            // Tìm đến đoạn return của component App và thay thế toàn bộ bằng đoạn này:
-return (
-    // 1. Container bao ngoài cùng: Thêm overflow-hidden để chặn thanh cuộn thừa của trình duyệt
-    <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden">
-        
-        {/* Các Modal thông báo/Loading giữ nguyên */}
-        {notification && (
-            <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 border ${notification.type === 'success' ? 'bg-green-50 border-green-500 text-green-700' : notification.type === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-yellow-50 border-yellow-500 text-yellow-700'}`}>
-                {notification.type === 'success' ? <Icon name="check" size={18} /> : <Icon name="alert" size={18} />}
-                <span className="text-sm font-medium">{notification.message}</span>
-            </div>
-        )}
-        {isLoading && (
-            <div className="fixed inset-0 z-[110] bg-gray-50 flex items-center justify-center text-pink-500">
-                <Icon name="loader" size={40} />
-                <span className="ml-3 text-lg text-gray-500">Đang tải cấu hình...</span>
-            </div>
-        )}
-        {showPasscodeModal && !isLoading && (
-            <PasscodeModal isInitialized={isInitialized} onAccess={handlePasscodeAccess} onInitialize={handleInitializeAlbum} error={passcodeError} albumKey={albumKey} />
-        )}
-        {showLoginModal && (
-            <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-                <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-sm w-full shadow-xl">
-                    <div className="flex justify-center mb-6 text-pink-500"><Icon name="lock" size={48} /></div>
-                    <h2 className="text-xl font-bold text-center mb-4 text-gray-900">Quản trị viên</h2>
-                    <input type="password" autoFocus value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} placeholder="Mật khẩu..." className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4" />
-                    {loginError && <p className="text-red-500 text-xs text-center mb-4">Sai mật khẩu</p>}
-                    <div className="flex gap-3"><button onClick={() => setShowLoginModal(false)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100">Hủy</button><button onClick={handleLogin} className="flex-1 py-2 rounded-lg bg-pink-500 hover:bg-pink-400 text-white font-bold shadow-lg shadow-pink-500/20">Đăng nhập</button></div>
-                </div>
-            </div>
-        )}
-        {isMovingFiles && moveProgress.total > 0 && (
-            <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-                <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-md w-full shadow-xl">
-                    <div className="flex justify-center mb-4 text-green-500"><Icon name="loader" size={48} /></div>
-                    <h2 className="text-lg font-bold text-center mb-6 text-gray-900">Đang đồng bộ ảnh từ Google Drive...</h2>
-                    <div className="mb-4">
-                        <div className="flex justify-between text-sm mb-2">
-                            <span className="text-gray-500">Tiến trình:</span>
-                            <span className="text-green-600 font-bold">{syncProgress.current}/{syncProgress.total} ({syncProgress.percent || 0}%)</span>
+            return (
+                <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden">
+                    {notification && (
+                        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 border ${notification.type === 'success' ? 'bg-green-50 border-green-500 text-green-700' : notification.type === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-yellow-50 border-yellow-500 text-yellow-700'}`}>
+                            {notification.type === 'success' ? <Icon name="check" size={18} /> : <Icon name="alert" size={18} />} <span className="text-sm font-medium">{notification.message}</span>
                         </div>
-                        <div className="w-full bg-gray-100 rounded-full h-1.5">
-                            <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-full transition-all duration-300" style={{ width: `${syncProgress.percent || 0}%` }}></div>
-                        </div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-6">
-                        <p className="text-xs text-gray-400 mb-1">Đang xử lý ảnh:</p>
-                        <p className="text-sm text-gray-800 truncate font-mono">{syncProgress.fileName || ""}</p>
-                        <p className="text-xs text-gray-500 mt-2">Thư mục: <span className="font-bold">{syncProgress.folderName || ""}</span></p>
-                    </div>
-                    <button onClick={() => { cancelDownloadRef.current = true; }} className="w-full py-2.5 rounded-lg border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"><Icon name="x" size={18} />Hủy bỏ</button>
-                </div>
-            </div>
-        )}
-
-        {/* GIAO DIỆN CHÍNH SAU KHI ĐĂNG NHẬP */}
-        {isPasscodeVerified && (
-            <>
-                {/* Lớp phủ mờ cho Mobile */}
-                {showAdminPanel && viewMode === 'PHOTOGRAPHER' && (
-                    <div className="fixed inset-0 bg-black/20 z-30 md:hidden" onClick={() => setShowAdminPanel(false)}></div>
-                )}
-
-                {/* 2. SIDEBAR (ADMIN PANEL) */}
-                {/* Thêm flex-shrink-0 để nó cứng lại, không bị nội dung bên phải ép nhỏ */}
-                <div className={`fixed md:relative top-0 left-0 h-full z-40 md:z-auto 
-                    transition-all duration-300 ease-in-out bg-white border-r border-gray-200 overflow-hidden flex-shrink-0
-                    w-80 
-                    ${viewMode === 'PHOTOGRAPHER' ? 'md:w-80' : 'md:w-0'}
-                    ${showAdminPanel ? 'translate-x-0' : '-translate-x-full'} 
-                    md:translate-x-0 shadow-xl md:shadow-none`}
-                >
-                     {/* ... NỘI DUNG SIDEBAR (GIỮ NGUYÊN CODE CŨ CỦA BẠN) ... */}
-                     {/* Tôi rút gọn ở đây để bạn dễ nhìn cấu trúc, bạn paste code nội dung panel của bạn vào nhé */}
-                     <div className="p-6 overflow-y-auto h-full">
-                        <div className="flex items-center justify-between gap-2 text-pink-500 mb-8">
-                            <Icon name="camera" size={28} />
-                            <span className="font-bold text-xl text-gray-900">Admin Panel</span>
-                            <button onClick={() => setShowAdminPanel(false)} className="md:hidden p-2 text-gray-400 hover:text-gray-600"><Icon name="x" size={20} /></button>
-                        </div>
-                        <div className="mb-6">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><Icon name="settings" size={12} /> Cài đặt</h3>
-                            <input type="text" value={albumName} onChange={(e) => setAlbumName(e.target.value)} placeholder="Tên Album" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded px-3 py-2 text-sm mb-3 focus:border-pink-500 outline-none"/>
-                            <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200"><div className="flex items-center gap-2 text-sm text-gray-700">{allowComments ? <Icon name="messageOn" size={16} className="text-green-500" /> : <Icon name="messageOff" size={16} className="text-red-400" />}<span>Bình luận</span></div><button onClick={() => setAllowComments(!allowComments)} className={`w-10 h-5 rounded-full relative ${allowComments ? 'bg-green-500' : 'bg-gray-300'}`}><div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all shadow-sm ${allowComments ? 'left-6' : 'left-1'}`} /></button></div>
-                            <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="Admin Password" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded px-3 py-2 text-sm mt-3 focus:border-pink-500 outline-none"/>
-                        </div>
-                        <div className="mb-6">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><Icon name="cloud" size={12} /> Google Drive Folders</h3>
-                            <input type="password" value={driveApiKey} onChange={(e) => setDriveApiKey(e.target.value)} placeholder="API Key" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded px-3 py-2 text-xs mb-3 focus:border-pink-500 outline-none"/>
-                            <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
-                                {driveFolders.map((folder, idx) => (
-                                    <div key={idx} className="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
-                                        <input type="text" value={folder.name} onChange={(e) => {const newFolders = [...driveFolders];newFolders[idx].name = e.target.value;setDriveFolders(newFolders);}} placeholder="Tên" className="w-20 bg-white border border-gray-200 rounded px-2 py-1 text-xs focus:border-pink-500 outline-none text-gray-800"/>
-                                        <input type="text" value={folder.id} onChange={(e) => {const newFolders = [...driveFolders];newFolders[idx].id = e.target.value;setDriveFolders(newFolders);}} placeholder="Folder ID" className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-xs focus:border-pink-500 outline-none text-gray-800"/>
-                                        <button onClick={() => setDriveFolders(driveFolders.filter((_, i) => i !== idx))} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded"><Icon name="x" size={12} /></button>
-                                    </div>
-                                ))}
+                    )}
+                    {isLoading && (<div className="fixed inset-0 z-[110] bg-gray-50 flex items-center justify-center text-pink-500"><Icon name="loader" size={40} /><span className="ml-3 text-lg text-gray-500">Đang tải cấu hình...</span></div>)}
+                    {showPasscodeModal && !isLoading && (<PasscodeModal isInitialized={isInitialized} onAccess={handlePasscodeAccess} onInitialize={handleInitializeAlbum} error={passcodeError} albumKey={albumKey} />)}
+                    {showLoginModal && (
+                        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                            <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-sm w-full shadow-xl">
+                                <div className="flex justify-center mb-6 text-pink-500"><Icon name="lock" size={48} /></div>
+                                <h2 className="text-xl font-bold text-center mb-4 text-gray-900">Quản trị viên</h2>
+                                <input type="password" autoFocus value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} placeholder="Mật khẩu..." className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-4 py-3 focus:border-pink-500 outline-none mb-4" />
+                                {loginError && <p className="text-red-500 text-xs text-center mb-4">Sai mật khẩu</p>}
+                                <div className="flex gap-3"><button onClick={() => setShowLoginModal(false)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100">Hủy</button><button onClick={handleLogin} className="flex-1 py-2 rounded-lg bg-pink-500 hover:bg-pink-400 text-white font-bold shadow-lg shadow-pink-500/20">Đăng nhập</button></div>
                             </div>
-                            <button onClick={() => setDriveFolders([...driveFolders, {name: '', id: ''}])} className="w-full py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs mb-3 flex items-center justify-center gap-1 transition-colors"><span className="text-lg leading-none">+</span> Thêm folder</button>
-                            {driveFolders.length > 0 && (<button onClick={syncAllFolders} disabled={isSyncingDrive} className="w-full py-2 bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200 rounded-lg text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-50 mb-3 transition-colors">{isSyncingDrive ? <><Icon name="loader" size={14} /> Đang sync...</> : <><Icon name="refresh" size={14} /> Sync Tất Cả ({driveFolders.filter(f => f.id).length})</>}</button>)}
-                            {driveFolders.length > 0 && (<div className="space-y-2"><label className="text-[10px] text-gray-400 uppercase font-semibold">Xem trước:</label><select value={currentFolderId} onChange={(e) => {const newFolderId = e.target.value;setCurrentFolderId(newFolderId);}} className="w-full bg-gray-50 border border-gray-200 text-gray-800 rounded px-2 py-2 text-xs focus:border-pink-500 outline-none"><option value="">Tất cả thư mục</option>{driveFolders.map((folder, idx) => (<option key={idx} value={folder.id}>{folder.name || `Folder ${idx + 1}`}</option>))}</select></div>)}
                         </div>
-                        <div className="mb-6"><h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><Icon name="shield" size={12} /> Cloud Storage (Firebase)</h3><button onClick={handleSaveSnapshot} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1 shadow-md shadow-blue-200"><Icon name="download" size={14} /> Save Snapshot</button></div>
-                        <div className="mb-6"><h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><Icon name="upload" size={12} /> Upload Local</h3><label className="flex flex-col items-center justify-center w-full h-16 border-2 border-gray-300 border-dashed rounded-xl hover:bg-gray-50 hover:border-pink-300 cursor-pointer group transition-all"><Icon name="folder" size={24} className="text-gray-400 group-hover:text-pink-500 transition-colors" /><span className="text-[10px] text-gray-500 mt-1">Chọn ảnh</span><input type="file" className="hidden" multiple accept="image/*" onChange={handleFileUpload} /></label></div>
-                        <div className="space-y-3 border-t border-gray-100 pt-6"><div className="flex justify-between text-sm"><span className="text-gray-500">Đã chọn:</span><span className="font-bold text-pink-500">{selectedCount} ảnh</span></div><button onClick={() => setFilterMode(filterMode === 'ALL' ? 'SELECTED' : 'ALL')} className={`w-full py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-2 ${filterMode === 'SELECTED' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600'}`}>{filterMode === 'SELECTED' ? <><Icon name="eye" size={14} /> Hiện tất cả</> : <><Icon name="filter" size={14} /> Xem ảnh chọn</>}</button><button onClick={handleDownloadReport} disabled={!selectedCount} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"><Icon name="download" size={16} /> Xuất Order (.txt)</button><button onClick={handleMoveToFinal} disabled={isMovingFiles || !selectedCount} className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-green-200">{isMovingFiles ? <><Icon name="loader" size={16} /> Đang lưu...</> : <><Icon name="folder" size={16} /> Lưu vào Folder</>}</button></div>
-                    </div>
-                </div>
-
-                {/* ============================================================================
-                    3. KHUNG CHỨA NỘI DUNG CHÍNH (HEADER + GRID) - ĐÂY LÀ PHẦN SỬA LỖI
-                   ============================================================================ */}
-                {/* min-w-0: Chìa khóa để Flex con co lại khi Flex cha bị ép
-                    overflow-hidden: Chặn việc grid đẩy khung ra ngoài */}
-                <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative w-full h-full">
-                    
-                    {/* HEADER (Sử dụng lại đoạn Header Grid đã cung cấp trước đó) */}
-                    <header className="h-16 border-b border-gray-200 bg-white shadow-sm z-10 shrink-0 px-3 md:px-4 grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 items-center">
-                        {/* ... Nội dung Header (Bạn copy từ bước trước vào đây) ... */}
-                        <div className="flex items-center gap-2 md:gap-3">
-                             {/* ... Code menu/download ... */}
-                             {viewMode === 'PHOTOGRAPHER' && (<button onClick={() => setShowAdminPanel(true)} className="md:hidden -ml-1 p-2 text-gray-500 hover:text-gray-800"><Icon name="menu" size={24} /></button>)}
-                             <div className="relative z-50">
-                                <button onClick={() => setShowDownloadMenu(!showDownloadMenu)} className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg transition-all active:scale-95 ${showDownloadMenu ? 'bg-pink-600 text-white ring-2 ring-pink-300' : 'bg-gradient-to-br from-pink-500 to-purple-600 text-white shadow-pink-200'}`}><Icon name="camera" size={20} stroke="white" />{viewStats.selected > 0 && (<div className="absolute -top-1 -right-1 bg-white text-pink-600 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-pink-100">{viewStats.selected > 9 ? '9+' : viewStats.selected}</div>)}</button>
-                                {showDownloadMenu && (<>{/* ... Dropdown menu code ... */}<div className="fixed inset-0 z-40" onClick={() => setShowDownloadMenu(false)}></div><div className="absolute top-12 left-0 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-left"><div className="bg-gray-50 px-4 py-3 border-b border-gray-100"><p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tải về máy (Original)</p><p className="text-xs font-bold text-pink-600 truncate">Phạm vi: {currentFolderId ? (driveFolders.find(f => f.id === currentFolderId)?.name || "Thư mục hiện tại") : "Toàn bộ Album"}</p></div><div className="p-2 space-y-1"><button onClick={() => handleSmartDownload('SELECTED')} disabled={viewStats.selected === 0} className="w-full text-left px-3 py-3 hover:bg-pink-50 rounded-lg flex items-center gap-3 transition-colors disabled:opacity-40 disabled:cursor-not-allowed group"><div className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 group-disabled:bg-gray-100 group-disabled:text-gray-400 flex items-center justify-center flex-shrink-0"><Icon name="heart" size={18} fill="currentColor" /></div><div><p className="text-sm font-bold text-gray-800 group-disabled:text-gray-500">Tải ảnh Đã chọn</p><p className="text-[10px] text-gray-500">{viewStats.selected} tấm</p></div></button><button onClick={() => handleSmartDownload('ALL')} className="w-full text-left px-3 py-3 hover:bg-blue-50 rounded-lg flex items-center gap-3 transition-colors group"><div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0"><Icon name="folder" size={18} /></div><div><p className="text-sm font-bold text-gray-800">Tải tất cả ảnh</p><p className="text-[10px] text-gray-500">{currentFolderId ? "Chỉ tải thư mục đang xem" : "Tải toàn bộ album"}</p></div></button></div><div className="bg-yellow-50 px-4 py-2 text-[10px] text-yellow-700 border-t border-yellow-100 flex gap-2"><Icon name="alert" size={12} /><span>PC: Lưu vào folder • Mobile: Tải từng tấm</span></div></div></>)}
-                             </div>
-                        </div>
-                        <div className="flex items-center gap-2 md:gap-3 overflow-hidden min-w-0 justify-start md:justify-center xl:justify-start">
-                            <h1 className="font-bold text-lg text-gray-800 truncate" title={albumName}>{albumName}</h1>
-                            {viewMode === 'CLIENT' && driveFolders.length > 0 && (
-                                <div className="hidden md:block flex-shrink-0">
-                                    <select value={currentFolderId} onChange={(e) => {setCurrentFolderId(e.target.value);}} className="bg-gray-50 border border-gray-200 text-gray-700 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none cursor-pointer max-w-[120px] truncate h-9">
-                                        <option value="">Tất cả</option>
-                                        {driveFolders.map((folder, idx) => (<option key={idx} value={folder.id}>{folder.name}</option>))}
-                                    </select>
+                    )}
+                    {isMovingFiles && moveProgress.total > 0 && (
+                        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+                            <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-md w-full shadow-xl">
+                                <div className="flex justify-center mb-4 text-green-500"><Icon name="loader" size={48} /></div>
+                                <h2 className="text-lg font-bold text-center mb-6 text-gray-900">Đang đồng bộ ảnh từ Google Drive...</h2>
+                                <div className="mb-4">
+                                    <div className="flex justify-between text-sm mb-2"><span className="text-gray-500">Tiến trình:</span><span className="text-green-600 font-bold">{syncProgress.current}/{syncProgress.total} ({syncProgress.percent || 0}%)</span></div>
+                                    <div className="w-full bg-gray-100 rounded-full h-1.5"><div className="bg-gradient-to-r from-green-500 to-emerald-500 h-full transition-all duration-300" style={{ width: `${syncProgress.percent || 0}%` }}></div></div>
                                 </div>
-                            )}
-                            {viewMode === 'CLIENT' && viewStats.total > 0 && (
-                                <div className="hidden md:flex items-center gap-2 bg-gray-100 border border-gray-200 px-3 py-2 rounded-lg flex-shrink-0 h-9">
-                                    <span className="font-bold text-pink-500">{viewStats.selected}</span>
-                                    <Icon name="heart" size={14} className="text-pink-500" fill="currentColor" />
-                                    <span className="text-gray-400">/</span>
-                                    <span className="text-gray-500">{viewStats.total}</span>
+                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-6">
+                                    <p className="text-xs text-gray-400 mb-1">Đang xử lý ảnh:</p><p className="text-sm text-gray-800 truncate font-mono">{syncProgress.fileName || ""}</p><p className="text-xs text-gray-500 mt-2">Thư mục: <span className="font-bold">{syncProgress.folderName || ""}</span></p>
                                 </div>
-                            )}
-                            {lastSaveTime && (
-                                <span className="hidden md:flex text-[10px] text-green-600 items-center gap-1 bg-green-50 px-2 py-1 rounded-full" title="Tự động đồng bộ lên Firebase">
-                                    <Icon name="checkCircle" size={10} /> Sync: {lastSaveTime.toLocaleTimeString('vi-VN')}
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex justify-end"><button onClick={() => {if (viewMode === 'PHOTOGRAPHER') {setViewMode('CLIENT');setShowAdminPanel(false);setIsAuthenticated(false); localStorage.removeItem(`lensflow_admin_token_${albumKey}`);setPasswordInput(""); showToast("Đã đăng xuất Admin", "info");} else {setShowLoginModal(true);}}} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm active:scale-95 whitespace-nowrap ${viewMode === 'PHOTOGRAPHER' ? 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 hover:border-red-300' : 'bg-gray-800 text-white border border-gray-900 hover:bg-gray-700'}`}>{viewMode === 'PHOTOGRAPHER' ? (<><Icon name="logOut" size={16} /> <span className="hidden md:inline">Thoát</span></>) : (<><Icon name="lock" size={16} /> <span className="hidden md:inline">Admin</span></>)}</button></div>
-                    </header>
-
-                    {/* Mobile Toolbar (Giữ nguyên) */}
-                    {viewMode === 'CLIENT' && (
-                        <div className="md:hidden flex items-center gap-2 p-2 border-b border-gray-200 bg-white">
-                             {/* ... */}
-                             {driveFolders.length > 0 && (<select value={currentFolderId} onChange={(e) => setCurrentFolderId(e.target.value)} className="flex-1 bg-gray-50 border border-gray-200 text-gray-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none"><option value="">Tất cả thư mục</option>{driveFolders.map((folder, idx) => (<option key={idx} value={folder.id}>{folder.name}</option>))}</select>)}
-                             {viewStats.total > 0 && (<div className="flex items-center justify-center gap-2 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg"><span className="font-bold text-pink-500">{viewStats.selected}</span><Icon name="heart" size={14} className="text-pink-500" fill="currentColor" /><span className="text-gray-400">/</span><span className="text-gray-600">{viewStats.total}</span></div>)}
+                                <button onClick={() => { cancelDownloadRef.current = true; }} className="w-full py-2.5 rounded-lg border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"><Icon name="x" size={18} />Hủy bỏ</button>
+                            </div>
                         </div>
                     )}
 
-                    {/* MAIN GRID */}
-                    <main className="flex-1 overflow-hidden relative md:p-4 bg-gray-50 w-full h-full">
-                        {!photos.length ? (
-                            <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
-                                <Icon name="grid" size={64} strokeWidth={1} className="mb-4" />
-                                <p className="text-lg font-light">Chưa có ảnh nào</p>
+                    {isPasscodeVerified && (
+                        <>
+                            {showAdminPanel && viewMode === 'PHOTOGRAPHER' && (<div className="fixed inset-0 bg-black/20 z-30 md:hidden" onClick={() => setShowAdminPanel(false)}></div>)}
+                            <div className={`fixed md:relative top-0 left-0 h-full z-40 md:z-auto transition-all duration-300 ease-in-out bg-white border-r border-gray-200 overflow-hidden flex-shrink-0 w-80 ${viewMode === 'PHOTOGRAPHER' ? 'md:w-80' : 'md:w-0'} ${showAdminPanel ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 shadow-xl md:shadow-none`}>
+                                <div className="p-6 overflow-y-auto h-full">
+                                    <div className="flex items-center justify-between gap-2 text-pink-500 mb-8"><Icon name="camera" size={28} /><span className="font-bold text-xl text-gray-900">Admin Panel</span><button onClick={() => setShowAdminPanel(false)} className="md:hidden p-2 text-gray-400 hover:text-gray-600"><Icon name="x" size={20} /></button></div>
+                                    <div className="mb-6">
+                                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><Icon name="settings" size={12} /> Cài đặt</h3>
+                                        <input type="text" value={albumName} onChange={(e) => setAlbumName(e.target.value)} placeholder="Tên Album" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded px-3 py-2 text-sm mb-3 focus:border-pink-500 outline-none"/>
+                                        <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200"><div className="flex items-center gap-2 text-sm text-gray-700">{allowComments ? <Icon name="messageOn" size={16} className="text-green-500" /> : <Icon name="messageOff" size={16} className="text-red-400" />}<span>Bình luận</span></div><button onClick={() => setAllowComments(!allowComments)} className={`w-10 h-5 rounded-full relative ${allowComments ? 'bg-green-500' : 'bg-gray-300'}`}><div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all shadow-sm ${allowComments ? 'left-6' : 'left-1'}`} /></button></div>
+                                        <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="Admin Password" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded px-3 py-2 text-sm mt-3 focus:border-pink-500 outline-none"/>
+                                    </div>
+                                    <div className="mb-6">
+                                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><Icon name="cloud" size={12} /> Google Drive Folders</h3>
+                                        <input type="password" value={driveApiKey} onChange={(e) => setDriveApiKey(e.target.value)} placeholder="API Key" className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded px-3 py-2 text-xs mb-3 focus:border-pink-500 outline-none"/>
+                                        <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
+                                            {driveFolders.map((folder, idx) => (
+                                                <div key={idx} className="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
+                                                    <input type="text" value={folder.name} onChange={(e) => {const newFolders = [...driveFolders];newFolders[idx].name = e.target.value;setDriveFolders(newFolders);}} placeholder="Tên" className="w-20 bg-white border border-gray-200 rounded px-2 py-1 text-xs focus:border-pink-500 outline-none text-gray-800"/>
+                                                    <input type="text" value={folder.id} onChange={(e) => {const newFolders = [...driveFolders];newFolders[idx].id = e.target.value;setDriveFolders(newFolders);}} placeholder="Folder ID" className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-xs focus:border-pink-500 outline-none text-gray-800"/>
+                                                    <button onClick={() => setDriveFolders(driveFolders.filter((_, i) => i !== idx))} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded"><Icon name="x" size={12} /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button onClick={() => setDriveFolders([...driveFolders, {name: '', id: ''}])} className="w-full py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs mb-3 flex items-center justify-center gap-1 transition-colors"><span className="text-lg leading-none">+</span> Thêm folder</button>
+                                        {driveFolders.length > 0 && (<button onClick={syncAllFolders} disabled={isSyncingDrive} className="w-full py-2 bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200 rounded-lg text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-50 mb-3 transition-colors">{isSyncingDrive ? <><Icon name="loader" size={14} /> Đang sync...</> : <><Icon name="refresh" size={14} /> Sync Tất Cả ({driveFolders.filter(f => f.id).length})</>}</button>)}
+                                        {driveFolders.length > 0 && (<div className="space-y-2"><label className="text-[10px] text-gray-400 uppercase font-semibold">Xem trước:</label><select value={currentFolderId} onChange={(e) => {const newFolderId = e.target.value;setCurrentFolderId(newFolderId);}} className="w-full bg-gray-50 border border-gray-200 text-gray-800 rounded px-2 py-2 text-xs focus:border-pink-500 outline-none"><option value="">Tất cả thư mục</option>{driveFolders.map((folder, idx) => (<option key={idx} value={folder.id}>{folder.name || `Folder ${idx + 1}`}</option>))}</select></div>)}
+                                    </div>
+                                    <div className="mb-6"><h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><Icon name="shield" size={12} /> Cloud Storage (Firebase)</h3><button onClick={handleSaveSnapshot} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1 shadow-md shadow-blue-200"><Icon name="download" size={14} /> Save Snapshot</button></div>
+                                    <div className="mb-6"><h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><Icon name="upload" size={12} /> Upload Local</h3><label className="flex flex-col items-center justify-center w-full h-16 border-2 border-gray-300 border-dashed rounded-xl hover:bg-gray-50 hover:border-pink-300 cursor-pointer group transition-all"><Icon name="folder" size={24} className="text-gray-400 group-hover:text-pink-500 transition-colors" /><span className="text-[10px] text-gray-500 mt-1">Chọn ảnh</span><input type="file" className="hidden" multiple accept="image/*" onChange={handleFileUpload} /></label></div>
+                                    <div className="space-y-3 border-t border-gray-100 pt-6"><div className="flex justify-between text-sm"><span className="text-gray-500">Đã chọn:</span><span className="font-bold text-pink-500">{selectedCount} ảnh</span></div><button onClick={() => setFilterMode(filterMode === 'ALL' ? 'SELECTED' : 'ALL')} className={`w-full py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-2 ${filterMode === 'SELECTED' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600'}`}>{filterMode === 'SELECTED' ? <><Icon name="eye" size={14} /> Hiện tất cả</> : <><Icon name="filter" size={14} /> Xem ảnh chọn</>}</button><button onClick={handleDownloadReport} disabled={!selectedCount} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"><Icon name="download" size={16} /> Xuất Order (.txt)</button><button onClick={handleMoveToFinal} disabled={isMovingFiles || !selectedCount} className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-green-200">{isMovingFiles ? <><Icon name="loader" size={16} /> Đang lưu...</> : <><Icon name="folder" size={16} /> Lưu vào Folder</>}</button></div>
+                                </div>
                             </div>
-                        ) : (
-                            <VirtualPhotoGrid
-                                ref={gridRef} // <--- [THÊM DÒNG QUAN TRỌNG NÀY VÀO ĐÂY]
-                                photos={filteredPhotos}
-                                viewMode={viewMode}
-                                onToggleSelect={toggleSelect}
-                                onUpdateComment={updateComment}
-                                onOpenView={handlePhotoChange}
-                                allowComments={allowComments}
-                                downloadedIds={downloadedIds}
-                                onDownload={handleSingleDownload} 
-                            />
-                        )}
-                    </main>
+                            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative w-full h-full">
+                                <header className="h-16 border-b border-gray-200 bg-white shadow-sm z-10 shrink-0 px-3 md:px-4 grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 items-center">
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                        {viewMode === 'PHOTOGRAPHER' && (<button onClick={() => setShowAdminPanel(true)} className="md:hidden -ml-1 p-2 text-gray-500 hover:text-gray-800"><Icon name="menu" size={24} /></button>)}
+                                        <div className="relative z-50">
+                                            <button onClick={() => setShowDownloadMenu(!showDownloadMenu)} className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg transition-all active:scale-95 ${showDownloadMenu ? 'bg-pink-600 text-white ring-2 ring-pink-300' : 'bg-gradient-to-br from-pink-500 to-purple-600 text-white shadow-pink-200'}`}><Icon name="camera" size={20} stroke="white" />{viewStats.selected > 0 && (<div className="absolute -top-1 -right-1 bg-white text-pink-600 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-pink-100">{viewStats.selected > 9 ? '9+' : viewStats.selected}</div>)}</button>
+                                            {showDownloadMenu && (<>{/* ... Dropdown menu code ... */}<div className="fixed inset-0 z-40" onClick={() => setShowDownloadMenu(false)}></div><div className="absolute top-12 left-0 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-left"><div className="bg-gray-50 px-4 py-3 border-b border-gray-100"><p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tải về máy (Original)</p><p className="text-xs font-bold text-pink-600 truncate">Phạm vi: {currentFolderId ? (driveFolders.find(f => f.id === currentFolderId)?.name || "Thư mục hiện tại") : "Toàn bộ Album"}</p></div><div className="p-2 space-y-1"><button onClick={() => handleSmartDownload('SELECTED')} disabled={viewStats.selected === 0} className="w-full text-left px-3 py-3 hover:bg-pink-50 rounded-lg flex items-center gap-3 transition-colors disabled:opacity-40 disabled:cursor-not-allowed group"><div className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 group-disabled:bg-gray-100 group-disabled:text-gray-400 flex items-center justify-center flex-shrink-0"><Icon name="heart" size={18} fill="currentColor" /></div><div><p className="text-sm font-bold text-gray-800 group-disabled:text-gray-500">Tải ảnh Đã chọn</p><p className="text-[10px] text-gray-500">{viewStats.selected} tấm</p></div></button><button onClick={() => handleSmartDownload('ALL')} className="w-full text-left px-3 py-3 hover:bg-blue-50 rounded-lg flex items-center gap-3 transition-colors group"><div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0"><Icon name="folder" size={18} /></div><div><p className="text-sm font-bold text-gray-800">Tải tất cả ảnh</p><p className="text-[10px] text-gray-500">{currentFolderId ? "Chỉ tải thư mục đang xem" : "Tải toàn bộ album"}</p></div></button></div><div className="bg-yellow-50 px-4 py-2 text-[10px] text-yellow-700 border-t border-yellow-100 flex gap-2"><Icon name="alert" size={12} /><span>PC: Lưu vào folder • Mobile: Tải từng tấm</span></div></div></>)}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 md:gap-3 overflow-hidden min-w-0 justify-start md:justify-center xl:justify-start">
+                                        <h1 className="font-bold text-lg text-gray-800 truncate" title={albumName}>{albumName}</h1>
+                                        {viewMode === 'CLIENT' && driveFolders.length > 0 && (<div className="hidden md:block flex-shrink-0"><select value={currentFolderId} onChange={(e) => {setCurrentFolderId(e.target.value);}} className="bg-gray-50 border border-gray-200 text-gray-700 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none cursor-pointer max-w-[120px] truncate h-9"><option value="">Tất cả</option>{driveFolders.map((folder, idx) => (<option key={idx} value={folder.id}>{folder.name}</option>))}</select></div>)}
+                                        {viewMode === 'CLIENT' && viewStats.total > 0 && (<div className="hidden md:flex items-center gap-2 bg-gray-100 border border-gray-200 px-3 py-2 rounded-lg flex-shrink-0 h-9"><span className="font-bold text-pink-500">{viewStats.selected}</span><Icon name="heart" size={14} className="text-pink-500" fill="currentColor" /><span className="text-gray-400">/</span><span className="text-gray-500">{viewStats.total}</span></div>)}
+                                        {lastSaveTime && (<span className="hidden md:flex text-[10px] text-green-600 items-center gap-1 bg-green-50 px-2 py-1 rounded-full" title="Tự động đồng bộ lên Firebase"><Icon name="checkCircle" size={10} /> Sync: {lastSaveTime.toLocaleTimeString('vi-VN')}</span>)}
+                                    </div>
+                                    <div className="flex justify-end"><button onClick={() => {if (viewMode === 'PHOTOGRAPHER') {setViewMode('CLIENT');setShowAdminPanel(false);setIsAuthenticated(false); localStorage.removeItem(`lensflow_admin_token_${albumKey}`);setPasswordInput(""); showToast("Đã đăng xuất Admin", "info");} else {setShowLoginModal(true);}}} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm active:scale-95 whitespace-nowrap ${viewMode === 'PHOTOGRAPHER' ? 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 hover:border-red-300' : 'bg-gray-800 text-white border border-gray-900 hover:bg-gray-700'}`}>{viewMode === 'PHOTOGRAPHER' ? (<><Icon name="logOut" size={16} /> <span className="hidden md:inline">Thoát</span></>) : (<><Icon name="lock" size={16} /> <span className="hidden md:inline">Admin</span></>)}</button></div>
+                                </header>
+                                {viewMode === 'CLIENT' && (<div className="md:hidden flex items-center gap-2 p-2 border-b border-gray-200 bg-white">{driveFolders.length > 0 && (<select value={currentFolderId} onChange={(e) => setCurrentFolderId(e.target.value)} className="flex-1 bg-gray-50 border border-gray-200 text-gray-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none"><option value="">Tất cả thư mục</option>{driveFolders.map((folder, idx) => (<option key={idx} value={folder.id}>{folder.name}</option>))}</select>)}{viewStats.total > 0 && (<div className="flex items-center justify-center gap-2 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg"><span className="font-bold text-pink-500">{viewStats.selected}</span><Icon name="heart" size={14} className="text-pink-500" fill="currentColor" /><span className="text-gray-400">/</span><span className="text-gray-600">{viewStats.total}</span></div>)}</div>)}
 
-                    <Lightbox 
-                        photo={selectedPhoto} 
-                        onClose={() => setSelectedPhoto(null)} 
-                        allPhotos={filteredPhotos} 
-                        onToggleSelect={toggleSelect} 
-                        currentIndex={selectedPhotoIndex}
-                        onNavigate={handlePhotoChange}
-                        downloadedIds={downloadedIds}
-                        onDownload={handleSingleDownload}
-                    />
+                                <main className="flex-1 overflow-hidden relative md:p-4 bg-gray-50 w-full h-full">
+                                    {!photos.length ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50"><Icon name="grid" size={64} strokeWidth={1} className="mb-4" /><p className="text-lg font-light">Chưa có ảnh nào</p></div>
+                                    ) : (
+                                        <VirtualPhotoGrid
+                                            ref={gridRef}
+                                            photos={filteredPhotos} viewMode={viewMode} onToggleSelect={toggleSelect} onUpdateComment={updateComment} onOpenView={handlePhotoChange} allowComments={allowComments} downloadedIds={downloadedIds} onDownload={handleSingleDownload} 
+                                        />
+                                    )}
+                                </main>
+
+                                <Lightbox photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} allPhotos={filteredPhotos} onToggleSelect={toggleSelect} currentIndex={selectedPhotoIndex} onNavigate={handlePhotoChange} downloadedIds={downloadedIds} onDownload={handleSingleDownload} />
+                            </div>
+                        </>
+                    )}
                 </div>
-            </>
-        )}
-    </div>
-);
+            );
         };
 
-        // === ROUTER COMPONENT (Top-level) ===
-        // Quyết định hiển thị HomePage hay App dựa trên URL
         const AlbumRouter = () => {
             const urlParams = new URLSearchParams(window.location.search);
             const albumKey = urlParams.get('album');
             const initialAlbumName = urlParams.get('name');
-
-            if (albumKey) {
-                // Nếu có album key trong URL, hiển thị App component
-                return <App albumKey={albumKey} initialAlbumName={initialAlbumName} />;
-            } else {
-                // Nếu không, hiển thị trang chủ để tạo/truy cập
-                return <AlbumEntryPage />;
-            }
+            if (albumKey) { return <App albumKey={albumKey} initialAlbumName={initialAlbumName} />; } 
+            else { return <AlbumEntryPage />; }
         };
 
         ReactDOM.createRoot(document.getElementById('root')).render(<AlbumRouter />);
