@@ -18,7 +18,7 @@
       "background_color": "#fafaf9",
       "theme_color": "#fafaf9",
       "orientation": "any"
-    }' />
+    }'/>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -243,7 +243,7 @@ const PhotoCard = React.memo(({
 }, (prev, next) => prev.photo === next.photo && prev.viewMode === next.viewMode && prev.allowComments === next.allowComments && prev.downloadedIds === next.downloadedIds && prev.index === next.index);
 
         // === LIGHTBOX (ĐÃ CẬP NHẬT: RESPONSIVE VỊ TRÍ NÚT DOWNLOAD) ===
-const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate, onDownload }) => {
+const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate, onDownload, downloadedIds }) => {
     if (!photo) return null;
     
     const [scale, setScale] = useState(1);
@@ -263,6 +263,7 @@ const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onN
     const [isHighResLoaded, setIsHighResLoaded] = useState(false);
     
     const currentPhoto = allPhotos[currentIndex] || photo;
+	const isDownloaded = downloadedIds && downloadedIds.has(currentPhoto.id);
     const prevPhoto = currentIndex > 0 ? allPhotos[currentIndex - 1] : null;
     const nextPhoto = currentIndex < allPhotos.length - 1 ? allPhotos[currentIndex + 1] : null;
 
@@ -360,14 +361,30 @@ const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onN
 
             {/* --- PHẦN NÚT BẤM TRÊN CÙNG (DESKTOP) --- */}
             
-            {/* 1. Nút Download (CHỈ HIỆN TRÊN DESKTOP - hidden md:flex) */}
-            <button 
-                onClick={(e) => { e.stopPropagation(); onDownload(currentPhoto); }} 
-                className={`hidden md:flex absolute top-6 right-32 text-gray-500 hover:text-blue-600 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} pointer-events-auto ${isBouncing ? 'animate-bounce text-blue-600' : ''}`} 
-                title="Tải ảnh gốc"
-            >
-                <Icon name="download" size={24} />
-            </button>
+            {/* 1. Nút Download (CHỈ HIỆN TRÊN DESKTOP) - Style: Badge Tinh tế */}
+			<button 
+				onClick={(e) => { e.stopPropagation(); onDownload(currentPhoto); }} 
+				// SỬA ĐỔI:
+				// 1. right-[8.5rem]: Vị trí chính xác 136px để cách đều tăm tắp với 2 nút kia.
+				// 2. mt-[2px]: Đẩy xuống 2 pixel để khắc phục lỗi "bị cao hơn".
+				className={`hidden md:flex absolute top-6 right-[8.5rem] mt-[2px] w-12 h-12 items-center justify-center rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 pointer-events-auto border group
+				${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} 
+				${isDownloaded 
+					? 'bg-white text-gray-600 border-green-500 ring-1 ring-green-100' // Style ĐÃ TẢI
+					: 'bg-white/50 text-gray-500 border-gray-200 hover:bg-white hover:text-blue-600' // Style CHƯA TẢI
+				}
+				${isBouncing ? 'animate-bounce' : ''}`} 
+				title={isDownloaded ? "Đã tải (Nhấn để tải lại)" : "Tải ảnh gốc"}
+			>
+				<Icon name="download" size={20} />
+				
+				{/* BADGE (Dấu tích xanh) */}
+				{isDownloaded && (
+					<div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center shadow-sm border-2 border-white transform scale-100 transition-transform">
+						<Icon name="check" size={10} strokeWidth={4} />
+					</div>
+				)}
+			</button>
 
             {/* 2. Nút Fullscreen */}
             <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className={`absolute top-4 right-16 md:top-6 md:right-20 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`} title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}><Icon name={isFullscreen ? "minimize" : "maximize"} size={24} /></button>
@@ -397,16 +414,27 @@ const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onN
             
             {/* --- CÁC NÚT ĐIỀU KHIỂN DƯỚI ĐÁY --- */}
 
-            {/* 1. Nút Download Mobile (CHỈ HIỆN TRÊN MOBILE - md:hidden) - Góc trái dưới */}
-            <button 
-                onClick={(e) => { e.stopPropagation(); onDownload(currentPhoto); }}
-                className={`md:hidden absolute bottom-6 left-6 z-50 w-12 h-12 flex items-center justify-center rounded-full bg-white text-gray-600 border border-gray-200 shadow-xl active:scale-95 transition-all duration-300 
-                ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} 
-                ${isBouncing ? 'animate-bounce text-blue-600 border-blue-300 ring-2 ring-blue-100' : 'hover:bg-gray-50'}`}
-                title="Tải ảnh gốc"
-            >
-                <Icon name="download" size={24} />
-            </button>
+            {/* 1. Nút Download Mobile - Style: Badge Tinh tế */}
+			<button 
+				onClick={(e) => { e.stopPropagation(); onDownload(currentPhoto); }}
+				className={`md:hidden absolute bottom-6 left-6 z-50 w-12 h-12 flex items-center justify-center rounded-full border shadow-xl active:scale-95 transition-all duration-300 
+				${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} 
+				${isDownloaded
+					? 'bg-white text-gray-800 border-green-500' // Đã tải: Nền trắng, viền xanh
+					: 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50' // Chưa tải
+				}
+				${isBouncing ? 'animate-bounce' : ''}`}
+				title="Tải ảnh gốc"
+			>
+				<Icon name="download" size={24} />
+				
+				{/* BADGE MOBILE: To hơn một chút để dễ nhìn trên điện thoại */}
+				{isDownloaded && (
+					<div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center shadow-sm border-2 border-white">
+						<Icon name="check" size={10} strokeWidth={4} />
+					</div>
+				)}
+			</button>
 
             {/* 2. Nút Chọn Ảnh - Chính giữa dưới đáy (Luôn hiện) */}
             <button 
