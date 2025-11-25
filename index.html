@@ -667,63 +667,81 @@ const PhotoCard = React.memo(({
         };
 //
 // === [MỚI] COMPONENT LƯỚI ẢO TỰ VIẾT (Thay thế react-window) ===
-        // Giúp web chạy mượt mà không cần tải thư viện ngoài
-        const SimpleFixedSizeGrid = React.memo(({ columnCount, columnWidth, height, rowCount, rowHeight, width, children: Cell, itemData, className, style, overscanRowCount = 2 }) => {
-            const [scrollTop, setScrollTop] = useState(0);
-            const containerRef = React.useRef(null);
+        // === [MỚI] COMPONENT LƯỚI ẢO TỰ VIẾT (Có hỗ trợ Scroll To Index) ===
+const SimpleFixedSizeGrid = React.memo(React.forwardRef(({ columnCount, columnWidth, height, rowCount, rowHeight, width, children: Cell, itemData, className, style, overscanRowCount = 2 }, ref) => {
+    const [scrollTop, setScrollTop] = useState(0);
+    const containerRef = React.useRef(null);
 
-            const handleScroll = (e) => {
-                setScrollTop(e.target.scrollTop);
-            };
-
-            // Tính toán hàng bắt đầu và kết thúc dựa trên vị trí cuộn
-            const startIndex = Math.floor(scrollTop / rowHeight);
-            const endIndex = Math.min(
-                rowCount - 1,
-                Math.floor((scrollTop + height) / rowHeight) + overscanRowCount
-            );
-
-            const items = [];
-            // Render thêm 1 hàng đệm phía trên để tránh bị trắng khi cuộn ngược
-            const renderStart = Math.max(0, startIndex - 1); 
+    // --- [LOGIC MỚI] Mở cổng cho cha điều khiển ---
+    React.useImperativeHandle(ref, () => ({
+        scrollToItem: (index) => {
+            if (!containerRef.current) return;
+            // Tính hàng chứa ảnh đó
+            const rowIndex = Math.floor(index / columnCount);
+            // Tính vị trí pixel cần cuộn tới
+            const targetScrollTop = rowIndex * rowHeight;
             
-            for (let rowIndex = renderStart; rowIndex <= endIndex; rowIndex++) {
-                for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
-                    const key = `${rowIndex}-${columnIndex}`;
-                    const itemStyle = {
-                        position: 'absolute',
-                        top: rowIndex * rowHeight,
-                        left: columnIndex * columnWidth,
-                        height: rowHeight,
-                        width: columnWidth,
-                    };
-                    
-                    items.push(
-                        <Cell 
-                            key={key}
-                            columnIndex={columnIndex}
-                            rowIndex={rowIndex}
-                            style={itemStyle}
-                            data={itemData}
-                        />
-                    );
-                }
-            }
+            // Thực hiện cuộn (Smooth cho đẹp, auto cho nhanh)
+            containerRef.current.scrollTo({
+                top: targetScrollTop,
+                behavior: 'auto' // Dùng 'auto' để sync tức thì, 'smooth' có thể bị lag nếu vuốt nhanh
+            });
+        }
+    }));
+    // ----------------------------------------------
 
-            return (
-                <div 
-                    className={className}
-                    style={{ ...style, height, width, overflow: 'auto', position: 'relative', WebkitOverflowScrolling: 'touch' }}
-                    onScroll={handleScroll}
-                >
-                    <div style={{ height: rowCount * rowHeight, width: '100%', position: 'relative' }}>
-                        {items}
-                    </div>
-                </div>
+    const handleScroll = (e) => {
+        setScrollTop(e.target.scrollTop);
+    };
+
+    const startIndex = Math.floor(scrollTop / rowHeight);
+    const endIndex = Math.min(
+        rowCount - 1,
+        Math.floor((scrollTop + height) / rowHeight) + overscanRowCount
+    );
+
+    const items = [];
+    const renderStart = Math.max(0, startIndex - 1); 
+    
+    for (let rowIndex = renderStart; rowIndex <= endIndex; rowIndex++) {
+        for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+            const key = `${rowIndex}-${columnIndex}`;
+            const itemStyle = {
+                position: 'absolute',
+                top: rowIndex * rowHeight,
+                left: columnIndex * columnWidth,
+                height: rowHeight,
+                width: columnWidth,
+            };
+            
+            items.push(
+                <Cell 
+                    key={key}
+                    columnIndex={columnIndex}
+                    rowIndex={rowIndex}
+                    style={itemStyle}
+                    data={itemData}
+                />
             );
-        });
+        }
+    }
+
+    return (
+        <div 
+            ref={containerRef} // Gán ref vào div chính
+            className={className}
+            style={{ ...style, height, width, overflow: 'auto', position: 'relative', WebkitOverflowScrolling: 'touch' }}
+            onScroll={handleScroll}
+        >
+            <div style={{ height: rowCount * rowHeight, width: '100%', position: 'relative' }}>
+                {items}
+            </div>
+        </div>
+    );
+}));
 // === VIRTUAL GRID COMPONENT (ĐÃ ĐIỀU CHỈNH BREAKPOINT CHO LAPTOP + ADMIN PANEL) ===
-const VirtualPhotoGrid = React.memo(({ 
+// === VIRTUAL GRID COMPONENT (Có Ref để App gọi) ===
+const VirtualPhotoGrid = React.memo(React.forwardRef(({ 
     photos, 
     viewMode, 
     onToggleSelect, 
@@ -732,7 +750,7 @@ const VirtualPhotoGrid = React.memo(({
     allowComments, 
     onDownload, 
     downloadedIds 
-}) => {
+}, ref) => { // <--- Nhận ref từ App
     const containerRef = React.useRef(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -740,7 +758,6 @@ const VirtualPhotoGrid = React.memo(({
         if (!containerRef.current) return;
         const resizeObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
-                // Lấy kích thước thực tế chính xác từng pixel sau khi trừ Admin Panel
                 setDimensions({
                     width: entry.contentRect.width,
                     height: entry.contentRect.height
@@ -751,30 +768,24 @@ const VirtualPhotoGrid = React.memo(({
         return () => resizeObserver.disconnect();
     }, []);
 
-    // --- LOGIC TÍNH SỐ CỘT (Đã tinh chỉnh) ---
     const getColumnCount = (width) => {
-        if (width < 600) return 1;   // Mobile dọc
-        if (width < 900) return 2;   // Mobile ngang / Tablet dọc
-        if (width < 1300) return 3;  // <--- QUAN TRỌNG: Laptop khi mở Admin Panel (thường còn ~1000px) sẽ rơi vào đây
-        return 4;                    // Màn hình lớn (Full HD trở lên) khi đóng Panel
+        if (width < 600) return 1;
+        if (width < 900) return 2;
+        if (width < 1300) return 3;
+        return 4;
     };
 
     const columnCount = dimensions.width > 0 ? getColumnCount(dimensions.width) : 4;
-    
-    // Tính toán kích thước item
-    // Trừ đi 4px để tránh lỗi làm tròn số khiến cột cuối bị rớt dòng
     const itemWidth = Math.floor((dimensions.width - 4) / columnCount); 
     const imageRatio = 5 / 4; 
     const footerHeight = 60; 
     const itemHeight = (itemWidth * imageRatio) + footerHeight; 
     const rowCount = Math.ceil(photos.length / columnCount);
 
-    // useMemo giữ nguyên
     const itemData = useMemo(() => ({
         photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth, onDownload, downloadedIds 
     }), [photos, columnCount, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, itemWidth, onDownload, downloadedIds]);
 
-    // Cell giữ nguyên logic, chỉ thêm prop index={idx}
     const Cell = useCallback(({ columnIndex, rowIndex, style, data }) => {
         const idx = rowIndex * data.columnCount + columnIndex;
         if (idx >= data.photos.length) return null;
@@ -798,7 +809,7 @@ const VirtualPhotoGrid = React.memo(({
                     allowComments={data.allowComments} 
                     onDownload={data.onDownload} 
                     downloadedIds={data.downloadedIds}
-                    index={idx}  // <--- [MỚI] QUAN TRỌNG: Truyền số thứ tự vào
+                    index={idx}
                 />
             </div>
         );
@@ -807,8 +818,9 @@ const VirtualPhotoGrid = React.memo(({
     if (dimensions.width === 0) return <div ref={containerRef} className="w-full h-full" />;
 
     return (
-        <div ref={containerRef} className="w-full h-full overflow-hidden"> {/* Thêm overflow-hidden để chắc chắn */}
+        <div ref={containerRef} className="w-full h-full overflow-hidden">
             <SimpleFixedSizeGrid
+                ref={ref} // <--- Truyền ref xuống SimpleFixedSizeGrid
                 className="ios-scroll-fix"
                 columnCount={columnCount}
                 columnWidth={itemWidth}
@@ -823,7 +835,7 @@ const VirtualPhotoGrid = React.memo(({
             </SimpleFixedSizeGrid>      
         </div>
     );
-});
+}));
 
         // Trang chủ để người dùng chọn tạo hoặc truy cập album
         const AlbumEntryPage = () => {
@@ -858,6 +870,7 @@ const VirtualPhotoGrid = React.memo(({
 
         // === APP COMPONENT (Quản lý một album cụ thể) ===
         const App = ({ albumKey, initialAlbumName }) => {
+			const gridRef = React.useRef(null);
             const [photos, setPhotos] = useState([]);
             const [viewMode, setViewMode] = useState('CLIENT');
             const [filterMode, setFilterMode] = useState('ALL');
@@ -1862,9 +1875,19 @@ const handleLogin = () => {
                 return selectedPhoto ? filteredPhotos.findIndex(p => p.id === selectedPhoto.id) : -1;
             }, [selectedPhoto, filteredPhotos]);
             
+            // Tìm hàm cũ và thay bằng đoạn này:
             const handlePhotoChange = useCallback((newPhoto) => {
                 setSelectedPhoto(newPhoto);
-            }, []);
+
+                // --- [LOGIC MỚI] ĐỒNG BỘ CUỘN ---
+                // Khi đổi ảnh trong Lightbox, tìm vị trí ảnh đó trong lưới và cuộn tới
+                if (gridRef.current && filteredPhotos.length > 0) {
+                    const index = filteredPhotos.findIndex(p => p.id === newPhoto.id);
+                    if (index !== -1) {
+                        gridRef.current.scrollToItem(index);
+                    }
+                }
+            }, [filteredPhotos]); // <--- Quan trọng: Phải có filteredPhotos trong ngoặc vuông này
 
             // Tìm đến đoạn return của component App và thay thế toàn bộ bằng đoạn này:
 return (
@@ -2038,6 +2061,7 @@ return (
                             </div>
                         ) : (
                             <VirtualPhotoGrid
+                                ref={gridRef} // <--- [THÊM DÒNG QUAN TRỌNG NÀY VÀO ĐÂY]
                                 photos={filteredPhotos}
                                 viewMode={viewMode}
                                 onToggleSelect={toggleSelect}
