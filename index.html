@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LensFlow - Client Proofing</title>
     
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#fafaf9">
+    <meta name="mobile-web-app-capable" content="yes">
+
     <link rel="manifest" href='data:application/manifest+json,{
       "name": "LensFlow Album",
       "short_name": "LensFlow",
@@ -14,11 +19,6 @@
       "theme_color": "#fafaf9",
       "orientation": "any"
     }' />
-    <meta name="mobile-web-app-capable" content="yes">
-
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#fafaf9">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -47,7 +47,6 @@
           background-color: #fafaf9; color: #292524; margin: 0;
           touch-action: manipulation; -webkit-tap-highlight-color: transparent;
       }
-      /* Tối ưu scroll cho iOS */
       html, body { -webkit-overflow-scrolling: touch; overscroll-behavior-y: none; }
       ::-webkit-scrollbar { width: 8px; }
       ::-webkit-scrollbar-track { background: #f5f5f4; }
@@ -67,7 +66,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script>
-        // === CẤU HÌNH FIREBASE CỦA BẠN ===
+        // === CẤU HÌNH FIREBASE ===
         const firebaseConfig = {
         apiKey: "AIzaSyD3FNEQkc-BgrgfYddYtAYHurQ63HL2MtE",
         authDomain: "lensflow-proofing-app.firebaseapp.com",
@@ -84,7 +83,6 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback } = React;
 
-        // === UTILITIES ===
         const getStorage = (key, def) => localStorage.getItem(key) ?? def;
         const arrayToObject = (array) => array.reduce((acc, photo) => { acc[photo.id] = photo; return acc; }, {});
         const objectToArray = (object) => object ? Object.values(object) : [];
@@ -100,7 +98,6 @@
             return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
         }
 
-        // === ICON COMPONENT ===
         const Icon = React.memo(({ name, size = 24, className = "", fill = "none", stroke = "currentColor" }) => {
             const icons = {
                 heart: <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>,
@@ -132,7 +129,6 @@
             return icons[name] || null;
         });
         
-        // === PASSCODE/INITIALIZATION MODAL COMPONENT ===
 const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey }) => {
     const [input, setInput] = useState('');
     const [internalError, setInternalError] = useState(error);
@@ -168,7 +164,7 @@ const PasscodeModal = ({ isInitialized, onAccess, onInitialize, error, albumKey 
         </div>
     );
 };
-        // === PHOTOCARD (ĐÃ NÂNG CẤP CHẤT LƯỢNG ẢNH THÔNG MINH) ===
+
 const PhotoCard = React.memo(({ 
     photo, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, onDownload, downloadedIds, index 
 }) => {
@@ -185,7 +181,6 @@ const PhotoCard = React.memo(({
     const handleToggleClick = useCallback((e) => { e.stopPropagation(); onToggleSelect(photo.id); }, [photo.id, onToggleSelect]);
     const isDownloaded = downloadedIds && downloadedIds.has(photo.id);
 
-    // === [LOGIC MỚI] TỐI ƯU CHẤT LƯỢNG ẢNH ===
     const isPriority = index < 12;
     const displayUrl = useMemo(() => {
         if (!photo.url) return "";
@@ -247,148 +242,188 @@ const PhotoCard = React.memo(({
     );
 }, (prev, next) => prev.photo === next.photo && prev.viewMode === next.viewMode && prev.allowComments === next.allowComments && prev.downloadedIds === next.downloadedIds && prev.index === next.index);
 
-        // === LIGHTBOX (Cập nhật: Hỗ trợ dvh và Fullscreen button) ===
-        const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate, onDownload }) => {
-            if (!photo) return null;
-            
-            const [scale, setScale] = useState(1);
-            const [position, setPosition] = useState({ x: 0, y: 0 });
-            const [isDragging, setIsDragging] = useState(false);
-            const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-            const [swipeOffset, setSwipeOffset] = useState(0);
-            const [isSwiping, setIsSwiping] = useState(false);
-            const [showUI, setShowUI] = useState(true); 
-            const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+        // === LIGHTBOX (ĐÃ CẬP NHẬT: RESPONSIVE VỊ TRÍ NÚT DOWNLOAD) ===
+const Lightbox = ({ photo, onClose, allPhotos, onToggleSelect, currentIndex, onNavigate, onDownload }) => {
+    if (!photo) return null;
+    
+    const [scale, setScale] = useState(1);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [swipeOffset, setSwipeOffset] = useState(0);
+    const [isSwiping, setIsSwiping] = useState(false);
+    const [showUI, setShowUI] = useState(true); 
+    const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+    const [isBouncing, setIsBouncing] = useState(false); // State hiệu ứng nhảy
 
-            const touchStartX = React.useRef(0);
-            const lastTouchDistance = React.useRef(null);
-            
-            const [isLoadingHighRes, setIsLoadingHighRes] = useState(false);
-            const [isHighResLoaded, setIsHighResLoaded] = useState(false);
-            
-            const currentPhoto = allPhotos[currentIndex] || photo;
-            const prevPhoto = currentIndex > 0 ? allPhotos[currentIndex - 1] : null;
-            const nextPhoto = currentIndex < allPhotos.length - 1 ? allPhotos[currentIndex + 1] : null;
+    const touchStartX = React.useRef(0);
+    const lastTouchDistance = React.useRef(null);
+    
+    const [isLoadingHighRes, setIsLoadingHighRes] = useState(false);
+    const [isHighResLoaded, setIsHighResLoaded] = useState(false);
+    
+    const currentPhoto = allPhotos[currentIndex] || photo;
+    const prevPhoto = currentIndex > 0 ? allPhotos[currentIndex - 1] : null;
+    const nextPhoto = currentIndex < allPhotos.length - 1 ? allPhotos[currentIndex + 1] : null;
 
-            const getDistance = (touches) => Math.hypot(touches[0].pageX - touches[1].pageX, touches[0].pageY - touches[1].pageY);
+    const handleToggle = (e) => {
+        e.stopPropagation();
+        onToggleSelect(currentPhoto.id);
+        setIsBouncing(true);
+        setTimeout(() => setIsBouncing(false), 2000); 
+    };
 
-            const toggleFullscreen = () => {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch((e) => { console.log(e); }); setIsFullscreen(true);
-                } else {
-                    if (document.exitFullscreen) { document.exitFullscreen(); setIsFullscreen(false); }
-                }
-            };
-            useEffect(() => {
-                const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
-                document.addEventListener('fullscreenchange', handleFsChange); return () => document.removeEventListener('fullscreenchange', handleFsChange);
-            }, []);
+    const getDistance = (touches) => Math.hypot(touches[0].pageX - touches[1].pageX, touches[0].pageY - touches[1].pageY);
 
-            useEffect(() => {
-                const preloadImage = (src) => { const img = new Image(); img.src = src; };
-                if (nextPhoto) preloadImage(nextPhoto.lightboxUrl || nextPhoto.url);
-                if (prevPhoto) preloadImage(prevPhoto.lightboxUrl || prevPhoto.url);
-            }, [currentIndex, nextPhoto, prevPhoto]);
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch((e) => { console.log(e); }); setIsFullscreen(true);
+        } else {
+            if (document.exitFullscreen) { document.exitFullscreen(); setIsFullscreen(false); }
+        }
+    };
+    useEffect(() => {
+        const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handleFsChange); return () => document.removeEventListener('fullscreenchange', handleFsChange);
+    }, []);
 
-            useEffect(() => {
-                setIsLoadingHighRes(false); setIsHighResLoaded(false); setScale(1); setPosition({ x: 0, y: 0 }); setSwipeOffset(0); lastTouchDistance.current = null; setShowUI(true); 
-            }, [photo.id, photo.lightboxUrl, photo.url]);
-            
-            const goToPrev = useCallback(() => { if (prevPhoto) { onNavigate(prevPhoto); } }, [prevPhoto, onNavigate]);
-            const goToNext = useCallback(() => { if (nextPhoto) { onNavigate(nextPhoto); } }, [nextPhoto, onNavigate]);
-            
-            const onTouchStart = (e) => {
-                if (e.touches.length === 2) { lastTouchDistance.current = getDistance(e.touches); return; }
-                if (e.touches.length === 1) {
-                    lastTouchDistance.current = null;
-                    if (scale > 1) { setIsDragging(true); setDragStart({ x: e.touches[0].clientX - position.x, y: e.touches[0].clientY - position.y }); } 
-                    else { setIsSwiping(true); touchStartX.current = e.targetTouches[0].clientX; }
-                }
-            }
-            const onTouchMove = (e) => {
-                if (e.touches.length === 2 && lastTouchDistance.current) {
-                    const newDistance = getDistance(e.touches);
-                    const delta = newDistance / lastTouchDistance.current;
-                    lastTouchDistance.current = newDistance;
-                    setScale(prevScale => Math.max(1, Math.min(prevScale * delta, 4)));
-                    return;
-                }
-                if (e.touches.length === 1) {
-                    if (scale > 1 && isDragging) { setPosition({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y }); } 
-                    else if (scale === 1 && isSwiping) { const diff = e.targetTouches[0].clientX - touchStartX.current; setSwipeOffset(diff * 0.2); }
-                }
-            }
-            const onTouchEnd = () => {
-                lastTouchDistance.current = null;
-                if (scale > 1) { setIsDragging(false); } 
-                else {
-                    if (!isSwiping) return;
-                    setIsSwiping(false);
-                    const minSwipeDistance = 15; 
-                    if (swipeOffset > minSwipeDistance && prevPhoto) { goToPrev(); } 
-                    else if (swipeOffset < -minSwipeDistance && nextPhoto) { goToNext(); } 
-                    else { setSwipeOffset(0); }
-                }
-            }
-            const handleWheel = (e) => { e.preventDefault(); const delta = e.deltaY > 0 ? 0.9 : 1.1; setScale(prev => Math.max(1, Math.min(prev * delta, 4))); };
-            const handleMouseDown = (e) => { if (scale > 1) { setIsDragging(true); setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y }); } };
-            const handleMouseMove = (e) => { if (isDragging && scale > 1) { setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }); } };
-            const handleMouseUp = () => setIsDragging(false);
-            const resetZoom = () => { setScale(1); setPosition({ x: 0, y: 0 }); };
-            const handleLoadHighRes = () => { setIsLoadingHighRes(true); };
+    useEffect(() => {
+        const preloadImage = (src) => { const img = new Image(); img.src = src; };
+        if (nextPhoto) preloadImage(nextPhoto.lightboxUrl || nextPhoto.url);
+        if (prevPhoto) preloadImage(prevPhoto.lightboxUrl || prevPhoto.url);
+    }, [currentIndex, nextPhoto, prevPhoto]);
 
-            useEffect(() => { if (scale > 1.5 && !isHighResLoaded && !isLoadingHighRes) { handleLoadHighRes(); } }, [scale, isHighResLoaded, isLoadingHighRes]);
-            const handleDoubleClick = (e) => { e.preventDefault(); e.stopPropagation(); if (scale === 1) { setScale(2); } else { resetZoom(); } };
+    useEffect(() => {
+        setIsLoadingHighRes(false); setIsHighResLoaded(false); setScale(1); setPosition({ x: 0, y: 0 }); setSwipeOffset(0); lastTouchDistance.current = null; setShowUI(true); 
+    }, [photo.id, photo.lightboxUrl, photo.url]);
+    
+    const goToPrev = useCallback(() => { if (prevPhoto) { onNavigate(prevPhoto); } }, [prevPhoto, onNavigate]);
+    const goToNext = useCallback(() => { if (nextPhoto) { onNavigate(nextPhoto); } }, [nextPhoto, onNavigate]);
+    
+    const onTouchStart = (e) => {
+        if (e.touches.length === 2) { lastTouchDistance.current = getDistance(e.touches); return; }
+        if (e.touches.length === 1) {
+            lastTouchDistance.current = null;
+            if (scale > 1) { setIsDragging(true); setDragStart({ x: e.touches[0].clientX - position.x, y: e.touches[0].clientY - position.y }); } 
+            else { setIsSwiping(true); touchStartX.current = e.targetTouches[0].clientX; }
+        }
+    }
+    const onTouchMove = (e) => {
+        if (e.touches.length === 2 && lastTouchDistance.current) {
+            const newDistance = getDistance(e.touches);
+            const delta = newDistance / lastTouchDistance.current;
+            lastTouchDistance.current = newDistance;
+            setScale(prevScale => Math.max(1, Math.min(prevScale * delta, 4)));
+            return;
+        }
+        if (e.touches.length === 1) {
+            if (scale > 1 && isDragging) { setPosition({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y }); } 
+            else if (scale === 1 && isSwiping) { const diff = e.targetTouches[0].clientX - touchStartX.current; setSwipeOffset(diff * 0.2); }
+        }
+    }
+    const onTouchEnd = () => {
+        lastTouchDistance.current = null;
+        if (scale > 1) { setIsDragging(false); } 
+        else {
+            if (!isSwiping) return;
+            setIsSwiping(false);
+            const minSwipeDistance = 15; 
+            if (swipeOffset > minSwipeDistance && prevPhoto) { goToPrev(); } 
+            else if (swipeOffset < -minSwipeDistance && nextPhoto) { goToNext(); } 
+            else { setSwipeOffset(0); }
+        }
+    }
+    const handleWheel = (e) => { e.preventDefault(); const delta = e.deltaY > 0 ? 0.9 : 1.1; setScale(prev => Math.max(1, Math.min(prev * delta, 4))); };
+    const handleMouseDown = (e) => { if (scale > 1) { setIsDragging(true); setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y }); } };
+    const handleMouseMove = (e) => { if (isDragging && scale > 1) { setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }); } };
+    const handleMouseUp = () => setIsDragging(false);
+    const resetZoom = () => { setScale(1); setPosition({ x: 0, y: 0 }); };
+    const handleLoadHighRes = () => { setIsLoadingHighRes(true); };
+
+    useEffect(() => { if (scale > 1.5 && !isHighResLoaded && !isLoadingHighRes) { handleLoadHighRes(); } }, [scale, isHighResLoaded, isLoadingHighRes]);
+    const handleDoubleClick = (e) => { e.preventDefault(); e.stopPropagation(); if (scale === 1) { setScale(2); } else { resetZoom(); } };
+    
+    useEffect(() => {
+        const handleKeyPress = (e) => { if (e.key === 'ArrowLeft') goToPrev(); if (e.key === 'ArrowRight') goToNext(); if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handleKeyPress); return () => window.removeEventListener('keydown', handleKeyPress);
+    }, [goToPrev, goToNext, onClose]);
+    
+    return (
+        <div className="fixed inset-0 h-screen h-[100dvh] z-50 flex items-center justify-center overflow-hidden bg-black" onClick={onClose} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{ touchAction: 'none' }}>
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+                <img src={currentPhoto.url} className="w-full h-full object-cover blur-3xl scale-150 opacity-60 transition-all duration-500 ease-linear" alt="" />
+                <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
+            </div>
+            <div className={`absolute bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'}`}>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-sm border backdrop-blur-md ${isHighResLoaded ? 'bg-green-100/40 text-green-800 border-green-200/50' : 'bg-white/40 text-gray-600 border-white/50'}`}>{isHighResLoaded ? 'HD' : 'SD'}</span>
+            </div>
+
+            {/* --- PHẦN NÚT BẤM TRÊN CÙNG (DESKTOP) --- */}
             
-            useEffect(() => {
-                const handleKeyPress = (e) => { if (e.key === 'ArrowLeft') goToPrev(); if (e.key === 'ArrowRight') goToNext(); if (e.key === 'Escape') onClose(); };
-                window.addEventListener('keydown', handleKeyPress); return () => window.removeEventListener('keydown', handleKeyPress);
-            }, [goToPrev, goToNext, onClose]);
+            {/* 1. Nút Download (CHỈ HIỆN TRÊN DESKTOP - hidden md:flex) */}
+            <button 
+                onClick={(e) => { e.stopPropagation(); onDownload(currentPhoto); }} 
+                className={`hidden md:flex absolute top-6 right-32 text-gray-500 hover:text-blue-600 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} pointer-events-auto ${isBouncing ? 'animate-bounce text-blue-600' : ''}`} 
+                title="Tải ảnh gốc"
+            >
+                <Icon name="download" size={24} />
+            </button>
+
+            {/* 2. Nút Fullscreen */}
+            <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className={`absolute top-4 right-16 md:top-6 md:right-20 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`} title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}><Icon name={isFullscreen ? "minimize" : "maximize"} size={24} /></button>
             
-            // [SỬA DVH TẠI ĐÂY CHO LIGHTBOX]
-            return (
-                <div className="fixed inset-0 h-screen h-[100dvh] z-50 flex items-center justify-center overflow-hidden bg-black" onClick={onClose} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{ touchAction: 'none' }}>
-                    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-                        <img src={currentPhoto.url} className="w-full h-full object-cover blur-3xl scale-150 opacity-60 transition-all duration-500 ease-linear" alt="" />
-                        <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
+            {/* 3. Nút Close */}
+            <button onClick={onClose} className={`absolute top-4 right-4 md:top-6 md:right-6 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}><Icon name="x" size={24} /></button>
+
+            <div className={`absolute top-4 left-4 md:top-6 md:left-6 z-50 bg-white/80 border border-gray-100 backdrop-blur px-4 py-2 rounded-full shadow-sm max-w-[calc(100%-8rem)] transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'} md:opacity-100`}>
+                <div className="flex items-center gap-3"><span className="text-sm font-bold text-gray-800 truncate">{currentPhoto.name}</span><span className="text-xs text-gray-400 border-l border-gray-300 pl-3">{currentIndex + 1} / {allPhotos.length} {scale > 1 && `• ${Math.round(scale * 100)}%`}</span></div>
+            </div>
+
+            {prevPhoto && (<button onClick={(e) => { e.stopPropagation(); goToPrev(); }} className={`hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-4 bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg></button>)}
+            {nextPhoto && (<button onClick={(e) => { e.stopPropagation(); goToNext(); }} className={`hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-4 bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg></button>)}
+
+            <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => { e.stopPropagation(); }}>
+                {prevPhoto && scale === 1 && (<div className="hidden md:block absolute left-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToPrev(); }}><img src={prevPhoto.url} alt="" className="w-full h-full object-cover rounded-lg shadow-lg" /></div>)}
+
+                <div className="relative z-10 w-full md:w-[70vw] h-full md:h-[90vh] flex items-center justify-center">
+                    <div className="relative w-full h-full flex items-center justify-center" onWheel={handleWheel} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onDoubleClick={handleDoubleClick} style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}>
+                        <img src={photo.lightboxUrl || photo.url} alt="" className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-0' : 'opacity-100'}`} style={{ transform: scale > 1 ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)` : `translateX(${swipeOffset}px)`, transformOrigin: 'center', transition: (isSwiping || isDragging || lastTouchDistance.current) ? 'none' : 'transform 0.2s ease-out' }} draggable={false} />
+                        {(isLoadingHighRes || isHighResLoaded) && (<img src={photo.originalUrl} alt="" onLoad={() => { setIsLoadingHighRes(false); setIsHighResLoaded(true); }} className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-100' : 'opacity-0'}`} style={{ transform: scale > 1 ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)` : `translateX(${swipeOffset}px)`, transformOrigin: 'center', transition: (isSwiping || isDragging || lastTouchDistance.current) ? 'none' : 'transform 0.2s ease-out' }} draggable={false} />)}
                     </div>
-                    <div className={`absolute bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'}`}>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-sm border backdrop-blur-md ${isHighResLoaded ? 'bg-green-100/40 text-green-800 border-green-200/50' : 'bg-white/40 text-gray-600 border-white/50'}`}>{isHighResLoaded ? 'HD' : 'SD'}</span>
-                    </div>
-
-                    {/* BUTTONS */}
-                    <button onClick={(e) => { e.stopPropagation(); onDownload(currentPhoto); }} className={`absolute top-4 right-28 md:top-6 md:right-32 text-gray-500 hover:text-blue-600 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`} title="Tải ảnh gốc"><Icon name="download" size={24} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className={`absolute top-4 right-16 md:top-6 md:right-20 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`} title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}><Icon name={isFullscreen ? "minimize" : "maximize"} size={24} /></button>
-                    <button onClick={onClose} className={`absolute top-4 right-4 md:top-6 md:right-6 text-gray-500 hover:text-gray-900 p-3 bg-white/50 hover:bg-white border border-gray-200 rounded-full transition-all z-50 shadow-sm backdrop-blur-md duration-300 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'} md:opacity-100 md:pointer-events-auto`}><Icon name="x" size={24} /></button>
-
-                    <div className={`absolute top-4 left-4 md:top-6 md:left-6 z-50 bg-white/80 border border-gray-100 backdrop-blur px-4 py-2 rounded-full shadow-sm max-w-[calc(100%-8rem)] transition-opacity duration-300 ${showUI ? 'opacity-100' : 'opacity-0'} md:opacity-100`}>
-                        <div className="flex items-center gap-3"><span className="text-sm font-bold text-gray-800 truncate">{currentPhoto.name}</span><span className="text-xs text-gray-400 border-l border-gray-300 pl-3">{currentIndex + 1} / {allPhotos.length} {scale > 1 && `• ${Math.round(scale * 100)}%`}</span></div>
-                    </div>
-
-                    {prevPhoto && (<button onClick={(e) => { e.stopPropagation(); goToPrev(); }} className={`hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-4 bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg></button>)}
-                    {nextPhoto && (<button onClick={(e) => { e.stopPropagation(); goToNext(); }} className={`hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 p-4 bg-white border border-gray-200 shadow-lg hover:shadow-xl rounded-full transition-all z-50`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg></button>)}
-
-                    <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => { e.stopPropagation(); }}>
-                        {prevPhoto && scale === 1 && (<div className="hidden md:block absolute left-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToPrev(); }}><img src={prevPhoto.url} alt="" className="w-full h-full object-cover rounded-lg shadow-lg" /></div>)}
-
-                        <div className="relative z-10 w-full md:w-[70vw] h-full md:h-[90vh] flex items-center justify-center">
-                            <div className="relative w-full h-full flex items-center justify-center" onWheel={handleWheel} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onDoubleClick={handleDoubleClick} style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}>
-                                <img src={photo.lightboxUrl || photo.url} alt="" className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-0' : 'opacity-100'}`} style={{ transform: scale > 1 ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)` : `translateX(${swipeOffset}px)`, transformOrigin: 'center', transition: (isSwiping || isDragging || lastTouchDistance.current) ? 'none' : 'transform 0.2s ease-out' }} draggable={false} />
-                                {(isLoadingHighRes || isHighResLoaded) && (<img src={photo.originalUrl} alt="" onLoad={() => { setIsLoadingHighRes(false); setIsHighResLoaded(true); }} className={`absolute max-h-full max-w-full object-contain shadow-2xl ${isHighResLoaded ? 'opacity-100' : 'opacity-0'}`} style={{ transform: scale > 1 ? `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)` : `translateX(${swipeOffset}px)`, transformOrigin: 'center', transition: (isSwiping || isDragging || lastTouchDistance.current) ? 'none' : 'transform 0.2s ease-out' }} draggable={false} />)}
-                            </div>
-                        </div>
-
-                        {nextPhoto && scale === 1 && (<div className="hidden md:block absolute right-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToNext(); }}><img src={nextPhoto.url} alt="" className="w-full h-full object-cover rounded-lg shadow-lg" /></div>)}
-                    </div>
-                    <button onClick={(e) => { e.stopPropagation(); onToggleSelect(currentPhoto.id); }} onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onToggleSelect(currentPhoto.id); }} onTouchStart={(e) => e.stopPropagation()} className={`absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 md:p-4 rounded-full transition-all z-50 flex items-center gap-2 shadow-xl duration-300 before:absolute before:-inset-6 before:content-[""] ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} md:translate-y-0 md:opacity-100 md:pointer-events-auto ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}>
-                        <Icon name="heart" size={24} fill={currentPhoto.isSelected ? "currentColor" : "none"} />
-                        <span className="text-sm font-bold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
-                    </button>
                 </div>
-            );
-        };
+
+                {nextPhoto && scale === 1 && (<div className="hidden md:block absolute right-[5%] top-1/2 -translate-y-1/2 w-[15vw] h-[50vh] opacity-10 grayscale hover:grayscale-0 hover:opacity-40 scale-95 transition-all duration-500 cursor-pointer" onClick={(e) => { e.stopPropagation(); goToNext(); }}><img src={nextPhoto.url} alt="" className="w-full h-full object-cover rounded-lg shadow-lg" /></div>)}
+            </div>
+            
+            {/* --- CÁC NÚT ĐIỀU KHIỂN DƯỚI ĐÁY --- */}
+
+            {/* 1. Nút Download Mobile (CHỈ HIỆN TRÊN MOBILE - md:hidden) - Góc trái dưới */}
+            <button 
+                onClick={(e) => { e.stopPropagation(); onDownload(currentPhoto); }}
+                className={`md:hidden absolute bottom-6 left-6 z-50 w-12 h-12 flex items-center justify-center rounded-full bg-white text-gray-600 border border-gray-200 shadow-xl active:scale-95 transition-all duration-300 
+                ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} 
+                ${isBouncing ? 'animate-bounce text-blue-600 border-blue-300 ring-2 ring-blue-100' : 'hover:bg-gray-50'}`}
+                title="Tải ảnh gốc"
+            >
+                <Icon name="download" size={24} />
+            </button>
+
+            {/* 2. Nút Chọn Ảnh - Chính giữa dưới đáy (Luôn hiện) */}
+            <button 
+                onClick={handleToggle}
+                onTouchEnd={(e) => { e.preventDefault(); handleToggle(e); }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className={`absolute bottom-6 left-1/2 -translate-x-1/2 md:bottom-8 z-50 h-12 md:h-14 px-6 rounded-full shadow-xl flex items-center gap-2 transition-all duration-300 active:scale-95 
+                ${showUI ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'} 
+                ${currentPhoto.isSelected ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
+            >
+                <Icon name="heart" size={24} fill={currentPhoto.isSelected ? "currentColor" : "none"} />
+                <span className="text-sm font-bold">{currentPhoto.isSelected ? 'ĐÃ CHỌN' : 'CHỌN ẢNH'}</span>
+            </button>
+        </div>
+    );
+};
         
-        // === [MỚI] COMPONENT LƯỚI ẢO TỰ VIẾT (Có hỗ trợ Scroll To Index) ===
         const SimpleFixedSizeGrid = React.memo(React.forwardRef(({ columnCount, columnWidth, height, rowCount, rowHeight, width, children: Cell, itemData, className, style, overscanRowCount = 2 }, ref) => {
             const [scrollTop, setScrollTop] = useState(0);
             const containerRef = React.useRef(null);
@@ -423,7 +458,6 @@ const PhotoCard = React.memo(({
             );
         }));
 
-        // === VIRTUAL GRID COMPONENT (Có Ref để App gọi) ===
         const VirtualPhotoGrid = React.memo(React.forwardRef(({ photos, viewMode, onToggleSelect, onUpdateComment, onOpenView, allowComments, onDownload, downloadedIds }, ref) => {
             const containerRef = React.useRef(null);
             const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -495,11 +529,9 @@ const PhotoCard = React.memo(({
             );
         };
 
-        // === APP COMPONENT ===
         const App = ({ albumKey, initialAlbumName }) => {
             const gridRef = React.useRef(null); 
             
-            // --- [MỚI] TỰ ĐỘNG FULLSCREEN KHI CHẠM VÀO MÀN HÌNH ---
             useEffect(() => {
                 const android = /Android/i.test(navigator.userAgent);
                 if (android) {
@@ -512,7 +544,6 @@ const PhotoCard = React.memo(({
                     window.addEventListener('touchstart', goFull, { once: true });
                 }
             }, []);
-            // ------------------------------------------------------
 
             const [photos, setPhotos] = useState([]);
             const [viewMode, setViewMode] = useState('CLIENT');
@@ -840,14 +871,12 @@ const PhotoCard = React.memo(({
             
             const handlePhotoChange = useCallback((newPhoto) => {
                 setSelectedPhoto(newPhoto);
-                // --- [LOGIC MỚI] Đồng bộ cuộn ---
                 if (gridRef.current && filteredPhotos.length > 0) {
                     const index = filteredPhotos.findIndex(p => p.id === newPhoto.id);
                     if (index !== -1) { gridRef.current.scrollToItem(index); }
                 }
             }, [filteredPhotos]);
 
-            // [SỬA DVH TẠI ĐÂY CHO APP CONTAINER]
             return (
                 <div className="flex h-screen h-[100dvh] bg-gray-50 text-gray-900 overflow-hidden">
                     {notification && (
